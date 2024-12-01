@@ -14,18 +14,22 @@ datasource db {
 }
 
 model Project {
-  id         String   @id @default(uuid())
+  id         String        @id @default(uuid())
   name       String
-  fee        String // default value for Offering
+  fee        Float // default value for Offering
   note       String? // default value for Offering
   deadline   DateTime // default value for Offering
   imageRatio String // default value for Offering
-  done       Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  done       Boolean       @default(false)
+  status     ProjectStatus @default(OFFERING)
+  createdAt  DateTime      @default(now())
+  teamId     String?
+  imageCount Int           @default(1)
 
   offering Offering[]
 
   @@index([id])
+  @@index([teamId])
 }
 
 model Team {
@@ -44,26 +48,36 @@ model Offering {
   projectId String
   teamId    String
 
-  fee        String
-  note       String
-  deadline   DateTime
-  imageRatio String
+  confirmationDuration Int      @default(0) // millisecond
+  fee                  Float
+  note                 String
+  deadline             DateTime
+  imageRatio           String
 
-  stage   Stage
-  team    Team    @relation(fields: [teamId], references: [id])
-  project Project @relation(fields: [projectId], references: [id])
+  stage   OfferingStage
+  team    Team          @relation(fields: [teamId], references: [id])
+  project Project       @relation(fields: [projectId], references: [id])
 
   @@index([id])
   @@index([projectId])
   @@index([teamId])
 }
 
-enum Stage {
+enum OfferingStage {
   OFFERING
   REJECTED
 
   IN_PROGRESS
   REVISION
 
+  DONE
+
+  @@map("Stage")
+}
+
+enum ProjectStatus {
+  OFFERING
+  IN_PROGRESS
+  REVISION
   DONE
 }

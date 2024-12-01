@@ -127,6 +127,21 @@
   resolved "https://registry.npmjs.org/@hono/node-server/-/node-server-1.13.7.tgz"
   integrity sha512-kTfUMsoloVKtRA2fLiGSd9qBddmru9KadNyhJCwgKBxTiNkaAJEwkVN9KV/rS4HtmmNRtUh6P+YpmjRMl0d9vQ==
 
+"@hono/swagger-ui@^0.5.0":
+  version "0.5.0"
+  resolved "https://registry.yarnpkg.com/@hono/swagger-ui/-/swagger-ui-0.5.0.tgz#7690e51f4194685e898e176b0c84864877c9d87b"
+  integrity sha512-MWYYSv9kC8IwFBLZdwgZZMT9zUq2C/4/ekuyEYOkHEgUMqu+FG3eebtBZ4ofMh60xYRxRR2BgQGoNIILys/PFg==
+
+"@hono/zod-validator@^0.4.1":
+  version "0.4.1"
+  resolved "https://registry.yarnpkg.com/@hono/zod-validator/-/zod-validator-0.4.1.tgz#07e4a07772a689a02ce9a54e8ab4992a6bfadfbe"
+  integrity sha512-I8LyfeJfvVmC5hPjZ2Iij7RjexlgSBT7QJudZ4JvNPLxn0JQ3sqclz2zydlwISAnw21D2n4LQ0nfZdoiv9fQQA==
+
+"@prisma/client@6.0.0":
+  version "6.0.0"
+  resolved "https://registry.yarnpkg.com/@prisma/client/-/client-6.0.0.tgz#87dfdd40e3475efa634dac30e891a4d05aeeed0b"
+  integrity sha512-tOBhG35ozqZ/5Y6B0TNOa6cwULUW8ijXqBXcgb12bfozqf6eGMyGs+jphywCsj6uojv5lAZZnxVSoLMVebIP+g==
+
 "@prisma/debug@6.0.0":
   version "6.0.0"
   resolved "https://registry.npmjs.org/@prisma/debug/-/debug-6.0.0.tgz"
@@ -245,3 +260,8 @@ undici-types@~6.19.2:
   version "6.19.8"
   resolved "https://registry.npmjs.org/undici-types/-/undici-types-6.19.8.tgz"
   integrity sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==
+
+zod@^3.23.8:
+  version "3.23.8"
+  resolved "https://registry.yarnpkg.com/zod/-/zod-3.23.8.tgz#e37b957b5d52079769fb8097099b592f0ef4067d"
+  integrity sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==
