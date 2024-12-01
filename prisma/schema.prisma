@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id         String   @id @default(uuid())
+  name       String
+  fee        String // default value for Offering
+  note       String? // default value for Offering
+  deadline   DateTime // default value for Offering
+  imageRatio String // default value for Offering
+  done       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  offering Offering[]
+
+  @@index([id])
+}
+
+model Team {
+  id                String     @id @default(uuid())
+  name              String
+  bankNumber        String?
+  bankAccountHolder String?
+  bankProvider      String?
+  offering          Offering[]
+
+  @@index([id])
+}
+
+model Offering {
+  id        String @id @default(uuid())
+  projectId String
+  teamId    String
+
+  fee        String
+  note       String
+  deadline   DateTime
+  imageRatio String
+
+  stage   Stage
+  team    Team    @relation(fields: [teamId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@index([id])
+  @@index([projectId])
+  @@index([teamId])
+}
+
+enum Stage {
+  OFFERING
+  REJECTED
+
+  IN_PROGRESS
+  REVISION
+
+  DONE
+}
