@@ -18,6 +18,8 @@ projectRoute.get(
         .optional(),
       is_paid_eq: z.enum(["true", "false"]).optional(),
       with: z.union([z.enum(["team"]), z.array(z.enum(["team"]))]).optional(),
+      skip: z.coerce.number().optional(),
+      limit: z.coerce.number().optional(),
     })
   ),
   async (c) => {
@@ -43,10 +45,25 @@ projectRoute.get(
     const result = await prisma.project.findMany({
       include,
       where,
+      ...(!isUndefined(query.skip) && { skip: query.skip }),
+      ...(!isUndefined(query.limit) && { take: query.limit + 1 }),
     });
+
+    let hasNext = false;
+    if (query.limit && result.length > query.limit) {
+      result.pop();
+      hasNext = true;
+    }
+
+    const hasPrev = !isUndefined(query.skip) && query.skip > 0;
+
     return c.json({
       data: {
         docs: result,
+        pagination: {
+          hasNext,
+          hasPrev,
+        },
       },
     });
   }
