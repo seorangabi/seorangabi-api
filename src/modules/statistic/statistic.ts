@@ -45,7 +45,7 @@ statisticRoute.get(
           _all: true,
         },
         where: {
-          createdAt: {
+          doneAt: {
             gte: new Date(week.start),
             lte: new Date(week.end),
           },

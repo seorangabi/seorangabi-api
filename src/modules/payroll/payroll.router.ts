@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import prisma from "../core/libs/prisma.js";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { isArray, isUndefined } from "../core/libs/utils.js";
+import { isUndefined } from "../core/libs/utils.js";
 import type { Prisma } from "@prisma/client";
 
 const payrollRoute = new Hono().basePath("/payroll");
@@ -48,7 +48,7 @@ payrollRoute.get(
 
     const include: Prisma.PayrollInclude = {};
     if (!isUndefined(query.with)) {
-      const withArray = isArray(query.with) ? query.with : [query.with];
+      const withArray = Array.isArray(query.with) ? query.with : [query.with];
 
       if (withArray.includes("team")) include.team = true;
     }
