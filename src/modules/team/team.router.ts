@@ -3,17 +3,35 @@ import prisma from "../core/libs/prisma.js";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { isUndefined } from "../core/libs/utils.js";
+import type { Prisma } from "@prisma/client";
 
 const teamRoute = new Hono().basePath("/team");
 
-teamRoute.get("/list", async (c) => {
-  const result = await prisma.team.findMany();
-  return c.json({
-    data: {
-      docs: result,
-    },
-  });
-});
+teamRoute.get(
+  "/list",
+  zValidator(
+    "query",
+    z.object({
+      id_eq: z.string().optional(),
+    })
+  ),
+  async (c) => {
+    const query = c.req.valid("query");
+
+    const where: Prisma.TeamWhereInput = {};
+    if (!isUndefined(query.id_eq)) {
+      where.id = query.id_eq;
+    }
+
+    const result = await prisma.team.findMany();
+    return c.json({
+      data: {
+        docs: result,
+      },
+      where,
+    });
+  }
+);
 
 teamRoute.post(
   "/",

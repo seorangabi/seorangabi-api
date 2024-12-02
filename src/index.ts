@@ -5,6 +5,8 @@ import projectRoute from "./modules/project/project.router.js";
 import { cors } from "hono/cors";
 import teamRoute from "./modules/team/team.router.js";
 import { logger } from "hono/logger";
+import payrollRoute from "./modules/payroll/payroll.router.js";
+import statisticRoute from "./modules/statistic/statistic.js";
 
 const app = new Hono();
 
@@ -18,6 +20,8 @@ api.use(logger());
 
 api.route("/", projectRoute);
 api.route("/", teamRoute);
+api.route("/", payrollRoute);
+api.route("/", statisticRoute);
 
 app.route("/api/v1", api);
 

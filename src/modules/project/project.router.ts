@@ -2,18 +2,55 @@ import { Hono } from "hono";
 import prisma from "../core/libs/prisma.js";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { isUndefined } from "../core/libs/utils.js";
+import { isArray, isUndefined } from "../core/libs/utils.js";
+import type { Prisma } from "@prisma/client";
 
 const projectRoute = new Hono().basePath("/project");
 
-projectRoute.get("/list", async (c) => {
-  const result = await prisma.project.findMany();
-  return c.json({
-    data: {
-      docs: result,
-    },
-  });
-});
+projectRoute.get(
+  "/list",
+  zValidator(
+    "query",
+    z.object({
+      team_id_eq: z.string().optional(),
+      status_eq: z
+        .enum(["OFFERING", "IN_PROGRESS", "REVISION", "DONE"])
+        .optional(),
+      is_paid_eq: z.enum(["true", "false"]).optional(),
+      with: z.union([z.enum(["team"]), z.array(z.enum(["team"]))]).optional(),
+    })
+  ),
+  async (c) => {
+    const query = c.req.valid("query");
+
+    const include: Prisma.ProjectInclude = {};
+    if (!isUndefined(query.with)) {
+      const withArray = isArray(query.with) ? query.with : [query.with];
+
+      if (withArray.includes("team")) include.team = true;
+    }
+
+    const where: Prisma.ProjectWhereInput = {};
+    if (!isUndefined(query.team_id_eq)) {
+      where.teamId = query.team_id_eq;
+    }
+    if (!isUndefined(query.status_eq)) {
+      where.status = query.status_eq;
+    }
+    if (query.is_paid_eq === "true") where.isPaid = true;
+    if (query.is_paid_eq === "false") where.isPaid = false;
+
+    const result = await prisma.project.findMany({
+      include,
+      where,
+    });
+    return c.json({
+      data: {
+        docs: result,
+      },
+    });
+  }
+);
 
 projectRoute.post(
   "/",
@@ -26,6 +63,7 @@ projectRoute.post(
       deadline: z.string(),
       imageRatio: z.string(),
       imageCount: z.number(),
+      teamId: z.string(),
     })
   ),
   async (c) => {
@@ -66,7 +104,6 @@ projectRoute.patch(
       note: z.string().nullable().optional(),
       deadline: z.string().optional(),
       imageRatio: z.string().optional(),
-      done: z.boolean().optional(),
       status: z
         .enum(["OFFERING", "IN_PROGRESS", "REVISION", "DONE"])
         .optional(),
@@ -88,7 +125,6 @@ projectRoute.patch(
         note: isUndefined(body.note) ? undefined : body.note,
         deadline: isUndefined(body.deadline) ? undefined : body.deadline,
         imageRatio: isUndefined(body.imageRatio) ? undefined : body.imageRatio,
-        done: isUndefined(body.done) ? undefined : body.done,
         status: isUndefined(body.status) ? undefined : body.status,
         teamId: isUndefined(body.teamId) ? undefined : body.teamId,
         imageCount: isUndefined(body.imageCount) ? undefined : body.imageCount,

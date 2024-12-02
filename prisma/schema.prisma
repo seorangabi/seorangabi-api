@@ -20,16 +20,22 @@ model Project {
   note       String? // default value for Offering
   deadline   DateTime // default value for Offering
   imageRatio String // default value for Offering
-  done       Boolean       @default(false)
   status     ProjectStatus @default(OFFERING)
   createdAt  DateTime      @default(now())
   teamId     String?
   imageCount Int           @default(1)
 
+  isPaid    Boolean @default(false)
+  payrollId String?
+
   offering Offering[]
+
+  payroll Payroll? @relation(fields: [payrollId], references: [id])
+  team    Team?    @relation(fields: [teamId], references: [id])
 
   @@index([id])
   @@index([teamId])
+  @@index([payrollId])
 }
 
 model Team {
@@ -39,6 +45,8 @@ model Team {
   bankAccountHolder String?
   bankProvider      String?
   offering          Offering[]
+  project           Project[]
+  payroll           Payroll[]
 
   @@index([id])
 }
@@ -49,7 +57,7 @@ model Offering {
   teamId    String
 
   confirmationDuration Int      @default(0) // millisecond
-  fee                  Float
+  fee                  Int
   note                 String
   deadline             DateTime
   imageRatio           String
@@ -63,6 +71,22 @@ model Offering {
   @@index([teamId])
 }
 
+model Payroll {
+  id          String        @id @default(uuid())
+  periodStart DateTime
+  periodEnd   DateTime
+  amount      Int
+  teamId      String
+  projects    Project[]
+  status      PayrollStatus @default(DRAFT)
+  team        Team          @relation(fields: [teamId], references: [id])
+  createdAt   DateTime      @default(now())
+  deletedAt   DateTime?
+
+  @@index([id])
+  @@index([teamId])
+}
+
 enum OfferingStage {
   OFFERING
   REJECTED
@@ -73,6 +97,11 @@ enum OfferingStage {
   DONE
 
   @@map("Stage")
+}
+
+enum PayrollStatus {
+  DRAFT
+  PAID
 }
 
 enum ProjectStatus {
