@@ -1,23 +1,28 @@
-# Gunakan image Node.js sebagai base image
-FROM node:18-alpine
+FROM node:18-alpine AS builder
 
-# Tentukan working directory di dalam container
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Salin file package.json dan package-lock.json
-COPY package*.json ./
+COPY package*.json ./ 
+COPY prisma ./prisma/ 
 
-# Install dependencies
-RUN yarn install
+RUN yarn install --frozen-lockfile
 
-# Salin seluruh file project ke dalam container
-COPY . .
+COPY . . 
 
-# Jalankan Prisma generate untuk membuat client
-RUN npx prisma generate
+RUN npx prisma generate 
+RUN yarn run build
 
-# Expose port yang akan digunakan aplikasi
+FROM node:18-alpine AS runtime
+
+WORKDIR /app
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./ 
+COPY --from=builder /app/dist ./dist 
+COPY --from=builder /app/prisma ./prisma 
+
+# Ekspose port untuk aplikasi
 EXPOSE 3020
 
-# Perintah untuk menjalankan aplikasi
-CMD ["yarn", "dev"]
+# Perintah default untuk menjalankan aplikasi
+CMD ["yarn", "start:prod"]
