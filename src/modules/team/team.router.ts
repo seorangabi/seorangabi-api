@@ -23,12 +23,13 @@ teamRoute.get(
       where.id = query.id_eq;
     }
 
-    const result = await prisma.team.findMany();
+    const result = await prisma.team.findMany({
+      where,
+    });
     return c.json({
       data: {
         docs: result,
       },
-      where,
     });
   }
 );

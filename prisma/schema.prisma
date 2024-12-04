@@ -5,7 +5,9 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  output        = "./generated/client"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
 }
 
 datasource db {
@@ -21,9 +23,11 @@ model Project {
   deadline   DateTime // default value for Offering
   imageRatio String // default value for Offering
   status     ProjectStatus @default(OFFERING)
-  createdAt  DateTime      @default(now())
   teamId     String?
   imageCount Int           @default(1)
+
+  createdAt DateTime  @default(now())
+  doneAt    DateTime?
 
   isPaid    Boolean @default(false)
   payrollId String?
