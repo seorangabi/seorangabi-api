@@ -40,6 +40,8 @@ teamRoute.post(
     "json",
     z.object({
       name: z.string(),
+      discordUserId: z.string(),
+      discordChannelId: z.string(),
       bankNumber: z.string().nullable(),
       bankAccountHolder: z.string().nullable(),
       bankProvider: z.string().nullable(),
@@ -79,6 +81,8 @@ teamRoute.patch(
     "json",
     z.object({
       name: z.string().optional(),
+      discordUserId: z.string().optional(),
+      discordChannelId: z.string().optional(),
       bankNumber: z.string().nullable().optional(),
       bankAccountHolder: z.string().nullable().optional(),
       bankProvider: z.string().nullable().optional(),
@@ -94,6 +98,12 @@ teamRoute.patch(
       },
       data: {
         name: isUndefined(body.name) ? undefined : body.name,
+        discordUserId: isUndefined(body.discordUserId)
+          ? undefined
+          : body.discordUserId,
+        discordChannelId: isUndefined(body.discordChannelId)
+          ? undefined
+          : body.discordChannelId,
         bankNumber: isUndefined(body.bankNumber) ? undefined : body.bankNumber,
         bankAccountHolder: isUndefined(body.bankAccountHolder)
           ? undefined

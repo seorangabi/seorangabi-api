@@ -3,7 +3,15 @@ import prisma from "../core/libs/prisma.js";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { isUndefined } from "../core/libs/utils.js";
-import type { Prisma } from "@prisma/client";
+import {
+  ActionRowBuilder,
+  ChannelType,
+  EmbedBuilder,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
+  TextChannel,
+} from "discord.js";
+import type { Prisma } from "../../../prisma/generated/client/index.js";
 
 const projectRoute = new Hono().basePath("/project");
 
@@ -102,13 +110,102 @@ projectRoute.post(
       imageRatio: z.string(),
       imageCount: z.number(),
       teamId: z.string(),
+      clientName: z.string().optional(),
     })
   ),
   async (c) => {
     const body = c.req.valid("json");
+
     const result = await prisma.project.create({
       data: body,
     });
+    console.log("Project created:", result.id);
+
+    const offering = await prisma.offering.create({
+      data: {
+        deadline: body.deadline,
+        fee: body.fee,
+        projectId: result.id,
+        note: result.note,
+        stage: "OFFERING",
+        teamId: body.teamId,
+      },
+    });
+    console.log("Offering created:", offering.id);
+
+    const team = await prisma.team.findUniqueOrThrow({
+      where: {
+        id: body.teamId,
+      },
+    });
+    console.log("Team found:", team?.id);
+
+    const discordClient = c.get("discordClient");
+
+    const channel = await discordClient.channels.fetch("1313163294692868227");
+
+    if (channel instanceof TextChannel) {
+      try {
+        const thread = await channel.threads.create({
+          name: `${body.name}`,
+          type: ChannelType.PrivateThread,
+        });
+
+        if (team?.discordUserId) {
+          await thread.members.add(team?.discordUserId);
+          console.log("Member added:", team?.discordUserId);
+          // await thread.members.add("540163649709277245");
+          // console.log("Member added:", "540163649709277245");
+        } else {
+          console.log(`Team ${body.teamId} not have discord user id`);
+        }
+
+        // inside a command, event listener, etc.
+        const exampleEmbed = new EmbedBuilder()
+          .setTitle(`🌟 NEW PROJECT 🌟 \n ${body.name}`)
+          .addFields(
+            { name: "Deadline", value: `${body.deadline}` },
+            { name: "Fee", value: `${body.fee}` },
+            { name: "Ratio", value: `${body.imageRatio}` },
+            { name: "Client", value: `${body.clientName || "-"}` }
+          );
+
+        await thread.send({ embeds: [exampleEmbed] });
+        console.log("Embed sent");
+
+        if (team?.discordUserId) {
+          const select = new StringSelectMenuBuilder()
+            .setCustomId(`offering/${offering.id}`)
+            .setPlaceholder("Select an option")
+            .addOptions(
+              new StringSelectMenuOptionBuilder()
+                .setLabel("Let's Go 🚀")
+                .setValue("yes"),
+              new StringSelectMenuOptionBuilder()
+                .setLabel("Nggak dulu ❌")
+                .setValue("no")
+            );
+
+          const row =
+            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+              select
+            );
+
+          await thread.send({
+            content: `Ready cuy <@${team?.discordUserId}> ? \nwaktu konfirmasi mu sampai jam 11:00 yaaa 👀`,
+            components: [row],
+          });
+        }
+      } catch (error) {
+        console.error(
+          `Gagal membuat thread untuk project ${body.name}:`,
+          error
+        );
+      }
+    } else {
+      console.error("Channel tidak valid atau bukan tipe text.");
+    }
+
     return c.json({
       data: {
         doc: result,
