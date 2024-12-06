@@ -3,7 +3,7 @@ import prisma from "../core/libs/prisma.js";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { isUndefined } from "../core/libs/utils.js";
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "../../../prisma/generated/client/index.js";
 
 const payrollRoute = new Hono().basePath("/payroll");
 
