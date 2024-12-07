@@ -25,7 +25,7 @@ model Project {
   status     ProjectStatus @default(OFFERING)
   teamId     String?
   imageCount Int           @default(1) // default value for Offering
-  clientName String?
+  clientName String
 
   createdAt DateTime  @default(now())
   doneAt    DateTime?
@@ -52,27 +52,27 @@ model Team {
   offering          Offering[]
   project           Project[]
   payroll           Payroll[]
-  discordUserId     String?
-  discordChannelId  String?
+  discordUserId     String
+  discordChannelId  String
 
   @@index([id])
 }
 
 model Offering {
-  id        String         @id @default(uuid())
-  projectId String
-  teamId    String
-  status    OfferingStatus @default(OFFERING)
+  id              String         @id @default(uuid())
+  projectId       String
+  teamId          String
+  status          OfferingStatus @default(OFFERING)
+  discordThreadId String
 
   confirmationDuration Int      @default(0) // millisecond
   fee                  Int
   note                 String?
   deadline             DateTime
 
-  stage     OfferingStage
-  team      Team          @relation(fields: [teamId], references: [id])
-  project   Project       @relation(fields: [projectId], references: [id])
-  createdAt DateTime      @default(now())
+  team      Team     @relation(fields: [teamId], references: [id])
+  project   Project  @relation(fields: [projectId], references: [id])
+  createdAt DateTime @default(now())
 
   @@index([id])
   @@index([projectId])
@@ -95,18 +95,6 @@ model Payroll {
   @@index([teamId])
 }
 
-enum OfferingStage {
-  OFFERING
-  REJECTED
-
-  IN_PROGRESS
-  REVISION
-
-  DONE
-
-  @@map("Stage")
-}
-
 enum PayrollStatus {
   DRAFT
   PAID
@@ -117,6 +105,7 @@ enum ProjectStatus {
   IN_PROGRESS
   REVISION
   DONE
+  CANCELLED
 }
 
 enum OfferingStatus {

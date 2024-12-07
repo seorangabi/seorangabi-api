@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import prisma from "../core/libs/prisma.js";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { isUndefined } from "../core/libs/utils.js";
+import { formatRupiah, isUndefined } from "../core/libs/utils.js";
 import {
   ActionRowBuilder,
   ChannelType,
@@ -12,6 +12,11 @@ import {
   TextChannel,
 } from "discord.js";
 import type { Prisma } from "../../../prisma/generated/client/index.js";
+import { format } from "date-fns";
+import { createProjectJsonSchema } from "./project.schema.js";
+import { createOfferingAndInteraction } from "../offering/offering.service.js";
+import { HTTPException } from "hono/http-exception";
+import { getOfferingTeamThreadFromProjectId } from "./project.service.js";
 
 const projectRoute = new Hono().basePath("/project");
 
@@ -26,7 +31,7 @@ projectRoute.get(
       id_eq: z.string().optional(),
       team_id_eq: z.string().optional(),
       status_eq: z
-        .enum(["OFFERING", "IN_PROGRESS", "REVISION", "DONE"])
+        .enum(["OFFERING", "IN_PROGRESS", "REVISION", "DONE", "CANCELLED"])
         .optional(),
       is_paid_eq: z.enum(["true", "false"]).optional(),
       skip: z.coerce.number().optional(),
@@ -100,111 +105,34 @@ projectRoute.get(
 
 projectRoute.post(
   "/",
-  zValidator(
-    "json",
-    z.object({
-      name: z.string(),
-      fee: z.number(),
-      note: z.string().nullable().optional(),
-      deadline: z.string(),
-      imageRatio: z.string(),
-      imageCount: z.number(),
-      teamId: z.string(),
-      clientName: z.string().optional(),
-    })
-  ),
+  zValidator("json", createProjectJsonSchema),
   async (c) => {
     const body = c.req.valid("json");
 
+    console.log("Creating project:", JSON.stringify(body));
     const result = await prisma.project.create({
       data: body,
     });
     console.log("Project created:", result.id);
 
-    const offering = await prisma.offering.create({
-      data: {
-        deadline: body.deadline,
-        fee: body.fee,
-        projectId: result.id,
-        note: result.note,
-        stage: "OFFERING",
-        teamId: body.teamId,
-      },
-    });
-    console.log("Offering created:", offering.id);
-
-    const team = await prisma.team.findUniqueOrThrow({
-      where: {
-        id: body.teamId,
-      },
-    });
-    console.log("Team found:", team?.id);
-
     const discordClient = c.get("discordClient");
 
-    const channel = await discordClient.channels.fetch("1313163294692868227");
-
-    if (channel instanceof TextChannel) {
-      try {
-        const thread = await channel.threads.create({
-          name: `${body.name}`,
-          type: ChannelType.PrivateThread,
-        });
-
-        if (team?.discordUserId) {
-          await thread.members.add(team?.discordUserId);
-          console.log("Member added:", team?.discordUserId);
-          // await thread.members.add("540163649709277245");
-          // console.log("Member added:", "540163649709277245");
-        } else {
-          console.log(`Team ${body.teamId} not have discord user id`);
-        }
-
-        // inside a command, event listener, etc.
-        const exampleEmbed = new EmbedBuilder()
-          .setTitle(`🌟 NEW PROJECT 🌟 \n ${body.name}`)
-          .addFields(
-            { name: "Deadline", value: `${body.deadline}` },
-            { name: "Fee", value: `${body.fee}` },
-            { name: "Ratio", value: `${body.imageRatio}` },
-            { name: "Client", value: `${body.clientName || "-"}` }
-          );
-
-        await thread.send({ embeds: [exampleEmbed] });
-        console.log("Embed sent");
-
-        if (team?.discordUserId) {
-          const select = new StringSelectMenuBuilder()
-            .setCustomId(`offering/${offering.id}`)
-            .setPlaceholder("Select an option")
-            .addOptions(
-              new StringSelectMenuOptionBuilder()
-                .setLabel("Let's Go 🚀")
-                .setValue("yes"),
-              new StringSelectMenuOptionBuilder()
-                .setLabel("Nggak dulu ❌")
-                .setValue("no")
-            );
-
-          const row =
-            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-              select
-            );
-
-          await thread.send({
-            content: `Ready cuy <@${team?.discordUserId}> ? \nwaktu konfirmasi mu sampai jam 11:00 yaaa 👀`,
-            components: [row],
-          });
-        }
-      } catch (error) {
-        console.error(
-          `Gagal membuat thread untuk project ${body.name}:`,
-          error
-        );
-      }
-    } else {
-      console.error("Channel tidak valid atau bukan tipe text.");
-    }
+    await createOfferingAndInteraction({
+      body: {
+        deadline: body.deadline,
+        fee: body.fee,
+        note: body.note,
+        projectId: result.id,
+        teamId: body.teamId,
+      },
+      discordClient,
+      prisma,
+      project: {
+        clientName: body.clientName,
+        name: body.name,
+        imageRatio: body.imageRatio,
+      },
+    });
 
     return c.json({
       data: {
@@ -235,37 +163,98 @@ projectRoute.patch(
     "json",
     z.object({
       name: z.string().optional(),
-      fee: z.number().optional(),
-      note: z.string().nullable().optional(),
-      deadline: z.string().optional(),
       imageRatio: z.string().optional(),
       status: z
-        .enum(["OFFERING", "IN_PROGRESS", "REVISION", "DONE"])
+        .enum(["OFFERING", "IN_PROGRESS", "REVISION", "DONE", "CANCELLED"])
         .optional(),
       teamId: z.string().optional(),
       imageCount: z.number().optional(),
+      clientName: z.string().optional(),
+
+      // Offering
+      fee: z.number().optional(),
+      note: z.string().nullable().optional(),
+      deadline: z.string().optional(),
     })
   ),
   async (c) => {
     const id = c.req.param("id");
     const body = c.req.valid("json");
 
+    console.log(
+      "Updating project",
+      JSON.stringify({
+        id,
+      })
+    );
     const result = await prisma.project.update({
       where: {
         id,
       },
       data: {
         name: isUndefined(body.name) ? undefined : body.name,
-        fee: isUndefined(body.fee) ? undefined : body.fee,
-        note: isUndefined(body.note) ? undefined : body.note,
-        deadline: isUndefined(body.deadline) ? undefined : body.deadline,
         imageRatio: isUndefined(body.imageRatio) ? undefined : body.imageRatio,
         status: isUndefined(body.status) ? undefined : body.status,
         teamId: isUndefined(body.teamId) ? undefined : body.teamId,
         imageCount: isUndefined(body.imageCount) ? undefined : body.imageCount,
+        clientName: isUndefined(body.clientName) ? undefined : body.clientName,
         doneAt: body.status === "DONE" ? new Date().toISOString() : undefined,
+
+        // Offering
+        fee: isUndefined(body.fee) ? undefined : body.fee,
+        note: isUndefined(body.note) ? undefined : body.note,
+        deadline: isUndefined(body.deadline) ? undefined : body.deadline,
       },
     });
+
+    if (body.status === "DONE") {
+      const discordClient = c.get("discordClient");
+
+      const { thread, team } = await getOfferingTeamThreadFromProjectId({
+        discordClient,
+        prisma,
+        projectId: id,
+      });
+
+      await thread.send({
+        content: `Thx guys <@${team.discordUserId}> project selesai 🔥🔥🔥`,
+      });
+    }
+
+    if (body.status === "CANCELLED") {
+      const discordClient = c.get("discordClient");
+
+      const { thread, team } = await getOfferingTeamThreadFromProjectId({
+        discordClient,
+        prisma,
+        projectId: id,
+      });
+
+      await thread.send({
+        content: `Sorry guys <@${team.discordUserId}> project dibatalkan ❌`,
+      });
+    }
+
+    if (body.teamId) {
+      console.log(
+        "Updating Offering",
+        JSON.stringify({
+          teamId: body.teamId,
+          projectId: id,
+        })
+      );
+      await prisma.offering.updateMany({
+        where: {
+          teamId: body.teamId,
+          projectId: id,
+        },
+        data: {
+          fee: isUndefined(body.fee) ? undefined : body.fee,
+          note: isUndefined(body.note) ? undefined : body.note,
+          deadline: isUndefined(body.deadline) ? undefined : body.deadline,
+        },
+      });
+    }
 
     return c.json({
       data: {

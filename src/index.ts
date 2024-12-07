@@ -16,9 +16,10 @@ import { env } from "hono/adapter";
 import { Commands } from "./commands.js";
 import {
   offeringInteraction,
-  createOfferingInteraction,
+  chooseTeamInteraction,
 } from "./modules/offering/offering.interaction.js";
 import offeringRoute from "./modules/offering/offering.router.js";
+import { HTTPException } from "hono/http-exception";
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
@@ -39,7 +40,7 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     if (action === "create-offering") {
-      await createOfferingInteraction({
+      await chooseTeamInteraction({
         interaction,
         projectId: id,
       });
@@ -110,6 +111,19 @@ app.get("/register", async (ctx) => {
     console.log(data);
     return Response.json({ message: "Commands registered" });
   }
+});
+
+// @ts-ignore
+app.onError((err, c) => {
+  if (err instanceof HTTPException) return err.getResponse();
+
+  if (err instanceof Error) {
+    const errorResponse = new Response(err.message, {
+      status: 500,
+    });
+    return new HTTPException(500, { res: errorResponse });
+  }
+  console.log(err);
 });
 
 const port = 3020;
