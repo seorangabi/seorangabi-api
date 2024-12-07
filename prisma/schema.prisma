@@ -55,6 +55,7 @@ model Team {
   payroll           Payroll[]
   discordUserId     String
   discordChannelId  String
+  deletedAt         DateTime?
 
   @@index([id])
 }

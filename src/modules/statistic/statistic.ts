@@ -69,6 +69,9 @@ statisticRoute.get(
         id: true,
         name: true,
       },
+      where: {
+        deletedAt: null, // filter for soft delete
+      },
     });
 
     const docs = output.map((item) => ({

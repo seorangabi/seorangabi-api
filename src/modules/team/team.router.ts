@@ -3,7 +3,7 @@ import prisma from "../core/libs/prisma.js";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { isUndefined } from "../core/libs/utils.js";
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "../../../prisma/generated/client/index.js";
 
 const teamRoute = new Hono().basePath("/team");
 
@@ -18,7 +18,9 @@ teamRoute.get(
   async (c) => {
     const query = c.req.valid("query");
 
-    const where: Prisma.TeamWhereInput = {};
+    const where: Prisma.TeamWhereInput = {
+      deletedAt: null, // filter for soft delete
+    };
     if (!isUndefined(query.id_eq)) {
       where.id = query.id_eq;
     }
@@ -62,7 +64,10 @@ teamRoute.post(
 
 teamRoute.delete("/:id", async (c) => {
   const id = c.req.param("id");
-  const result = await prisma.team.delete({
+  const result = await prisma.team.update({
+    data: {
+      deletedAt: new Date(),
+    },
     where: {
       id,
     },
