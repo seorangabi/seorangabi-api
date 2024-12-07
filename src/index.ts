@@ -39,7 +39,7 @@ client.on("interactionCreate", async (interaction) => {
       return;
     }
 
-    if (action === "create-offering") {
+    if (action === "choose-team") {
       await chooseTeamInteraction({
         interaction,
         projectId: id,
