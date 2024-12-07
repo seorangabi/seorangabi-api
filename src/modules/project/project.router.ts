@@ -2,20 +2,10 @@ import { Hono } from "hono";
 import prisma from "../core/libs/prisma.js";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { formatRupiah, isUndefined } from "../core/libs/utils.js";
-import {
-  ActionRowBuilder,
-  ChannelType,
-  EmbedBuilder,
-  StringSelectMenuBuilder,
-  StringSelectMenuOptionBuilder,
-  TextChannel,
-} from "discord.js";
+import { isUndefined } from "../core/libs/utils.js";
 import type { Prisma } from "../../../prisma/generated/client/index.js";
-import { format } from "date-fns";
 import { createProjectJsonSchema } from "./project.schema.js";
 import { createOfferingAndInteraction } from "../offering/offering.service.js";
-import { HTTPException } from "hono/http-exception";
 import { getOfferingTeamThreadFromProjectId } from "./project.service.js";
 
 const projectRoute = new Hono().basePath("/project");
@@ -62,7 +52,9 @@ projectRoute.get(
       }
     }
 
-    const where: Prisma.ProjectWhereInput = {};
+    const where: Prisma.ProjectWhereInput = {
+      deletedAt: null, // filter for soft delete
+    };
     if (!isUndefined(query.id_eq)) {
       where.id = query.id_eq;
     }
@@ -144,7 +136,10 @@ projectRoute.post(
 
 projectRoute.delete("/:id", async (c) => {
   const id = c.req.param("id");
-  const result = await prisma.project.delete({
+  const result = await prisma.project.update({
+    data: {
+      deletedAt: new Date().toISOString(),
+    },
     where: {
       id,
     },
@@ -235,18 +230,19 @@ projectRoute.patch(
       });
     }
 
-    if (body.teamId) {
+    if (result.teamId) {
       console.log(
         "Updating Offering",
         JSON.stringify({
-          teamId: body.teamId,
+          teamId: result.teamId,
           projectId: id,
         })
       );
       await prisma.offering.updateMany({
         where: {
-          teamId: body.teamId,
+          teamId: result.teamId,
           projectId: id,
+          status: "ACCEPTED",
         },
         data: {
           fee: isUndefined(body.fee) ? undefined : body.fee,

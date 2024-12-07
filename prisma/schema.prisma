@@ -28,6 +28,7 @@ model Project {
   clientName String
 
   createdAt DateTime  @default(now())
+  deletedAt DateTime?
   doneAt    DateTime?
 
   isPaid    Boolean @default(false)
