@@ -7,6 +7,7 @@ import type { Prisma } from "../../../prisma/generated/client/index.js";
 import { createProjectJsonSchema } from "./project.schema.js";
 import { createOfferingAndInteraction } from "../offering/offering.service.js";
 import { getOfferingTeamThreadFromProjectId } from "./project.service.js";
+// import { createOfferingDeadlineNotification } from "../offering/offering.queue.js";
 
 const projectRoute = new Hono().basePath("/project");
 
@@ -109,7 +110,7 @@ projectRoute.post(
 
     const discordClient = c.get("discordClient");
 
-    await createOfferingAndInteraction({
+    const { offering, team } = await createOfferingAndInteraction({
       body: {
         deadline: body.deadline,
         fee: body.fee,
@@ -125,6 +126,13 @@ projectRoute.post(
         imageRatio: body.imageRatio,
       },
     });
+
+    // console.log("Creating offering deadline notification");
+    // await createOfferingDeadlineNotification({
+    //   offering,
+    //   message: `Mohon dikonfirmasi ya guys <@${team.discordUserId}> \nNotifikasi ini akan dikirimkan setiap 30 menit.`,
+    // });
+    // console.log("Offering deadline notification created");
 
     return c.json({
       data: {

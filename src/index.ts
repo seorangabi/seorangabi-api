@@ -20,15 +20,13 @@ import {
 } from "./modules/offering/offering.interaction.js";
 import offeringRoute from "./modules/offering/offering.router.js";
 import { HTTPException } from "hono/http-exception";
+import discordClient from "./discord.js";
 
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
-});
-client.on("ready", async (c) => {
+discordClient.on("ready", async (c) => {
   console.log(`Logged in as ${c.user.tag}!`);
 });
 
-client.on("interactionCreate", async (interaction) => {
+discordClient.on("interactionCreate", async (interaction) => {
   if (interaction instanceof StringSelectMenuInteraction) {
     const [action, id] = interaction.customId.split("/");
     if (action === "offering") {
@@ -49,7 +47,7 @@ client.on("interactionCreate", async (interaction) => {
     console.log(interaction);
   }
 });
-client.login(process.env.DISCORD_TOKEN);
+discordClient.login(process.env.DISCORD_TOKEN);
 
 declare module "hono" {
   interface ContextVariableMap {
@@ -61,7 +59,7 @@ const app = new Hono();
 
 // Middleware to inject Discord client into context
 app.use("*", async (c, next) => {
-  c.set("discordClient", client); // Attach Discord client to context
+  c.set("discordClient", discordClient); // Attach Discord client to context
   await next();
 });
 

@@ -74,6 +74,7 @@ export const createOfferingAndInteraction = async ({
       note: body.note,
       status: "OFFERING",
       discordThreadId: thread.id,
+      confirmationDuration: 30 * 60 * 1000, // 30 menit
     },
   });
   console.log("Offering created:", offering.id);
@@ -119,5 +120,7 @@ export const createOfferingAndInteraction = async ({
 
   return {
     offeringId: offering.id,
+    offering,
+    team,
   };
 };
