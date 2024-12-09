@@ -1,20 +1,26 @@
 import { TextChannel, type Client, type TextThreadChannel } from "discord.js";
-import type { PrismaClient } from "../../../prisma/generated/client/index.js";
+import type {
+  OfferingStatus,
+  Prisma,
+  PrismaClient,
+} from "../../../prisma/generated/client/index.js";
 import { HTTPException } from "hono/http-exception";
 
 export const getOfferingTeamThreadFromProjectId = async ({
   discordClient,
   prisma,
   projectId,
+  status = "ACCEPTED",
 }: {
   discordClient: Client;
   prisma: PrismaClient;
   projectId: string;
+  status?: OfferingStatus;
 }) => {
   const offerings = await prisma.offering.findMany({
     where: {
       projectId,
-      status: "ACCEPTED",
+      status,
     },
     orderBy: {
       createdAt: "desc",

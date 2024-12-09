@@ -157,7 +157,7 @@ export const chooseTeamInteraction = async ({
     },
   });
 
-  const { offeringId } = await createOfferingAndInteraction({
+  const { offering } = await createOfferingAndInteraction({
     discordClient: interaction.client,
     prisma,
     body: {
@@ -176,6 +176,6 @@ export const chooseTeamInteraction = async ({
 
   interaction.channel?.delete();
   console.log(
-    `Delete channel ${interaction.channel?.id} for offering ${offeringId}`
+    `Delete channel ${interaction.channel?.id} for offering ${offering.id}`
   );
 };
