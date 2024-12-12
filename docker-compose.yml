@@ -1,18 +1,15 @@
-version: "3.3"
 services:
-  # hono-app:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3020:3020"
-  #   env_file:
-  #     - .env
-  #   depends_on:
-  #     - postgres
-  #     - redis
-  #   volumes:
-  #     - .:/app
+  hono-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3020:3020"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
 
   # Postgres
   postgres:

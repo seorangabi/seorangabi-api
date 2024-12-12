@@ -1,5 +1,7 @@
 FROM node:18-alpine AS builder
 
+RUN apk add --no-cache openssl libssl3
+
 WORKDIR /app
 
 COPY package*.json ./ 
@@ -13,6 +15,8 @@ RUN npx prisma generate
 RUN yarn run build
 
 FROM node:18-alpine AS runtime
+
+RUN apk add --no-cache openssl libssl3
 
 WORKDIR /app
 

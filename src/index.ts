@@ -69,7 +69,15 @@ app.notFound((c) => c.json({ message: "Not Found", ok: false }, 404));
 
 // API
 const api = new Hono();
-api.use(cors());
+api.use(
+  '*',
+  cors({
+    origin: 'https://studio.seorangabi.com',
+    allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    maxAge: 86400,
+  })
+);
 api.use(logger());
 api.route("/", projectRoute);
 api.route("/", teamRoute);
@@ -77,7 +85,7 @@ api.route("/", payrollRoute);
 api.route("/", statisticRoute);
 api.route("/", offeringRoute);
 
-app.route("/api/v1", api);
+app.route("/v1", api);
 
 /**
  * Register slash commands with Discord. This is only required once (or when you update your commands)
