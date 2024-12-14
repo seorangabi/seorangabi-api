@@ -41,8 +41,8 @@ statisticRoute.get(
 
     for (const week of weeks) {
       const result = await prisma.project.groupBy({
-        _count: {
-          _all: true,
+        _sum: {
+          imageCount: true,
         },
         where: {
           doneAt: {
@@ -59,7 +59,7 @@ statisticRoute.get(
         end: week.end,
         teams: result.map((team) => ({
           id: team.teamId as string,
-          count: team._count._all ?? 0,
+          count: team._sum.imageCount ?? 0,
         })),
       });
     }
