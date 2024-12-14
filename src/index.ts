@@ -9,7 +9,7 @@ import payrollRoute from "./modules/payroll/payroll.router.js";
 import statisticRoute from "./modules/statistic/statistic.js";
 import {
   Client,
-  GatewayIntentBits,
+  DiscordAPIError,
   StringSelectMenuInteraction,
 } from "discord.js";
 import { env } from "hono/adapter";
@@ -70,11 +70,11 @@ app.notFound((c) => c.json({ message: "Not Found", ok: false }, 404));
 // API
 const api = new Hono();
 api.use(
-  '*',
+  "*",
   cors({
-    origin: 'https://studio.seorangabi.com',
-    allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization'],
+    origin: ["https://studio.seorangabi.com", "http://localhost:3000"],
+    allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
     maxAge: 86400,
   })
 );
@@ -122,12 +122,17 @@ app.get("/register", async (ctx) => {
 // @ts-ignore
 app.onError((err, c) => {
   if (err instanceof HTTPException) return err.getResponse();
-
-  if (err instanceof Error) {
-    const errorResponse = new Response(err.message, {
+  
+  if (err instanceof DiscordAPIError) {
+    return new Response(`Discord Error: ${err.message}`, {
       status: 500,
     });
-    return new HTTPException(500, { res: errorResponse });
+  }
+
+  if (err instanceof Error) {
+    return new Response(err.message, {
+      status: 500,
+    })
   }
   console.log(err);
 });

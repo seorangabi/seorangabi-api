@@ -102,41 +102,44 @@ projectRoute.post(
   async (c) => {
     const body = c.req.valid("json");
 
-    console.log("Creating project:", JSON.stringify(body));
-    const result = await prisma.project.create({
-      data: body,
+   const doc =  await prisma.$transaction(async (trx) => {
+      console.log("Creating project:", JSON.stringify(body));
+      const result = await trx.project.create({
+        data: body,
+      });
+      console.log("Project created:", result.id);
+
+      const discordClient = c.get("discordClient");
+
+      const { offering, team } = await createOfferingAndInteraction({
+        prisma: trx,
+        body: {
+          deadline: body.deadline,
+          fee: body.fee,
+          note: body.note,
+          projectId: result.id,
+          teamId: body.teamId,
+        },
+        discordClient,
+        project: {
+          clientName: body.clientName,
+          name: body.name,
+          imageRatio: body.imageRatio,
+        },
+      });
+
+      // console.log("Creating offering deadline notification");
+      // await createOfferingDeadlineNotification({
+      //   offering,
+      //   message: `Mohon dikonfirmasi ya guys <@${team.discordUserId}> \nNotifikasi ini akan dikirimkan setiap 30 menit.`,
+      // });
+      // console.log("Offering deadline notification created");
+
+      return result;
     });
-    console.log("Project created:", result.id);
-
-    const discordClient = c.get("discordClient");
-
-    const { offering, team } = await createOfferingAndInteraction({
-      body: {
-        deadline: body.deadline,
-        fee: body.fee,
-        note: body.note,
-        projectId: result.id,
-        teamId: body.teamId,
-      },
-      discordClient,
-      prisma,
-      project: {
-        clientName: body.clientName,
-        name: body.name,
-        imageRatio: body.imageRatio,
-      },
-    });
-
-    // console.log("Creating offering deadline notification");
-    // await createOfferingDeadlineNotification({
-    //   offering,
-    //   message: `Mohon dikonfirmasi ya guys <@${team.discordUserId}> \nNotifikasi ini akan dikirimkan setiap 30 menit.`,
-    // });
-    // console.log("Offering deadline notification created");
-
     return c.json({
       data: {
-        doc: result,
+        doc: doc,
       },
     });
   }
@@ -184,81 +187,90 @@ projectRoute.patch(
     const id = c.req.param("id");
     const body = c.req.valid("json");
 
-    console.log(
-      "Updating project",
-      JSON.stringify({
-        id,
-      })
-    );
-    const result = await prisma.project.update({
-      where: {
-        id,
-      },
-      data: {
-        name: isUndefined(body.name) ? undefined : body.name,
-        imageRatio: isUndefined(body.imageRatio) ? undefined : body.imageRatio,
-        status: isUndefined(body.status) ? undefined : body.status,
-        teamId: isUndefined(body.teamId) ? undefined : body.teamId,
-        imageCount: isUndefined(body.imageCount) ? undefined : body.imageCount,
-        clientName: isUndefined(body.clientName) ? undefined : body.clientName,
-        doneAt: body.status === "DONE" ? new Date().toISOString() : undefined,
-
-        // Offering
-        fee: isUndefined(body.fee) ? undefined : body.fee,
-        note: isUndefined(body.note) ? undefined : body.note,
-        deadline: isUndefined(body.deadline) ? undefined : body.deadline,
-      },
-    });
-
-    if (body.status === "DONE") {
-      const discordClient = c.get("discordClient");
-
-      const { thread, team } = await getOfferingTeamThreadFromProjectId({
-        discordClient,
-        prisma,
-        projectId: id,
-      });
-
-      await thread.send({
-        content: `Thx guys <@${team.discordUserId}> project selesai 🔥🔥🔥`,
-      });
-    }
-
-    if (body.status === "CANCELLED") {
-      const discordClient = c.get("discordClient");
-
-      const { thread, team } = await getOfferingTeamThreadFromProjectId({
-        discordClient,
-        prisma,
-        projectId: id,
-      });
-
-      await thread.send({
-        content: `Sorry guys <@${team.discordUserId}> project dibatalkan ❌`,
-      });
-    }
-
-    if (result.teamId) {
+    const result = await prisma.$transaction(async (trx) => {
       console.log(
-        "Updating Offering",
+        "Updating project",
         JSON.stringify({
-          teamId: result.teamId,
-          projectId: id,
+          id,
         })
       );
-      await prisma.offering.updateMany({
+      const result = await trx.project.update({
         where: {
-          teamId: result.teamId,
-          projectId: id,
-          status: "ACCEPTED",
+          id,
         },
         data: {
+          name: isUndefined(body.name) ? undefined : body.name,
+          imageRatio: isUndefined(body.imageRatio)
+            ? undefined
+            : body.imageRatio,
+          status: isUndefined(body.status) ? undefined : body.status,
+          teamId: isUndefined(body.teamId) ? undefined : body.teamId,
+          imageCount: isUndefined(body.imageCount)
+            ? undefined
+            : body.imageCount,
+          clientName: isUndefined(body.clientName)
+            ? undefined
+            : body.clientName,
+          doneAt: body.status === "DONE" ? new Date().toISOString() : undefined,
+
+          // Offering
           fee: isUndefined(body.fee) ? undefined : body.fee,
           note: isUndefined(body.note) ? undefined : body.note,
           deadline: isUndefined(body.deadline) ? undefined : body.deadline,
         },
       });
-    }
+
+      if (body.status === "DONE") {
+        const discordClient = c.get("discordClient");
+
+        const { thread, team } = await getOfferingTeamThreadFromProjectId({
+          prisma: trx,
+          discordClient,
+          projectId: id,
+        });
+
+        await thread.send({
+          content: `Thx guys <@${team.discordUserId}> project selesai 🔥🔥🔥`,
+        });
+      }
+
+      if (body.status === "CANCELLED") {
+        const discordClient = c.get("discordClient");
+
+        const { thread, team } = await getOfferingTeamThreadFromProjectId({
+          prisma: trx,
+          discordClient,
+          projectId: id,
+        });
+
+        await thread.send({
+          content: `Sorry guys <@${team.discordUserId}> project dibatalkan ❌`,
+        });
+      }
+
+      if (result.teamId) {
+        console.log(
+          "Updating Offering",
+          JSON.stringify({
+            teamId: result.teamId,
+            projectId: id,
+          })
+        );
+        await trx.offering.updateMany({
+          where: {
+            teamId: result.teamId,
+            projectId: id,
+            status: "ACCEPTED",
+          },
+          data: {
+            fee: isUndefined(body.fee) ? undefined : body.fee,
+            note: isUndefined(body.note) ? undefined : body.note,
+            deadline: isUndefined(body.deadline) ? undefined : body.deadline,
+          },
+        });
+      }
+      return result;
+    });
 
     return c.json({
       data: {

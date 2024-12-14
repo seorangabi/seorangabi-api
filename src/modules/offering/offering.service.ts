@@ -8,7 +8,10 @@ import {
   StringSelectMenuOptionBuilder,
   TextChannel,
 } from "discord.js";
-import type { PrismaClient } from "../../../prisma/generated/client/index.js";
+import type {
+  Prisma,
+  PrismaClient,
+} from "../../../prisma/generated/client/index.js";
 import { formatRupiah } from "../core/libs/utils.js";
 import type { z } from "zod";
 import type { createOfferingJsonSchema } from "./offering.schema.js";
@@ -21,7 +24,10 @@ export const createOfferingAndInteraction = async ({
   project,
 }: {
   discordClient: Client;
-  prisma: PrismaClient;
+  prisma: Omit<
+    PrismaClient<Prisma.PrismaClientOptions>,
+    "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+  >;
   body: z.infer<typeof createOfferingJsonSchema>;
   project: {
     name: string;
@@ -42,9 +48,13 @@ export const createOfferingAndInteraction = async ({
   });
   console.log("Team fetched:", team?.id);
   if (!team.discordChannelId)
-    throw new HTTPException(404, { message: "Discord channel id not found" });
+    throw new HTTPException(404, { message: "Discord channel id is empty" });
   if (!team.discordUserId)
-    throw new HTTPException(404, { message: "Discord user id not found" });
+    throw new HTTPException(404, { message: "Discord user id is empty" });
+
+  console.log("Fetching user:", team.discordUserId);
+  const discordUser = await discordClient.users.fetch(team.discordUserId);
+  console.log("Discord user fetched:", discordUser?.id);
 
   console.log("Fetching channel:", team.discordChannelId);
   const channel = await discordClient.channels.fetch(team.discordChannelId);
@@ -79,21 +89,29 @@ export const createOfferingAndInteraction = async ({
   });
   console.log("Offering created:", offering.id);
 
-  const embed = new EmbedBuilder()
-    .setTitle(`🌟 NEW PROJECT 🌟 \n ${project.name}`)
-    .addFields(
-      {
-        name: "Deadline",
-        value: `${format(body.deadline, "dd MMMM yyyy HH:mm")}`,
-      },
-      { name: "Fee", value: `${formatRupiah(body.fee)}` },
-      { name: "Ratio", value: `${project.imageRatio || "-"}` },
-      { name: "Client", value: `${project.clientName || "-"}` }
-    );
+  const deadlineIsSameDay =
+    new Date(body.deadline).setHours(0, 0, 0, 0) ===
+    new Date().setHours(0, 0, 0, 0);
 
-  console.log("Sending embed");
-  await thread.send({ embeds: [embed] });
-  console.log("Embed sent");
+  const deadlineText = deadlineIsSameDay
+    ? format(body.deadline, "HH:mm") // today
+    : `${format(body.deadline, "dd MMMM yyyy")} || _${format(
+        body.deadline,
+        "HH:mm"
+      )}_`; // tomorrow
+
+  console.log("Sending offering");
+  await thread.send({
+    content: `
+🌟 NEW PROJECT 🌟
+${project.name}
+DL: ${deadlineText}
+FEE : ${formatRupiah(body.fee)}
+RATIO : ${project.imageRatio || "N/A"}
+CLIENT : ${project.clientName || "N/A"}
+    `,
+  });
+  console.log("Offering sent");
 
   const select = new StringSelectMenuBuilder()
     .setCustomId(`offering/${offering.id}`)

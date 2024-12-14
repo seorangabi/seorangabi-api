@@ -83,31 +83,36 @@ export const offeringInteraction = async ({
   }
 
   if (option === "yes") {
-    console.log(`Updating status to in progress for offering id:`, offeringId);
-    const offering = await prisma.offering.update({
-      where: {
-        id: offeringId,
-      },
-      data: {
-        status: "ACCEPTED",
-      },
-      select: {
-        id: true,
-        projectId: true,
-      },
-    });
+    prisma.$transaction(async (trx) => {
+      console.log(
+        `Updating status to in progress for offering id:`,
+        offeringId
+      );
+      const offering = await trx.offering.update({
+        where: {
+          id: offeringId,
+        },
+        data: {
+          status: "ACCEPTED",
+        },
+        select: {
+          id: true,
+          projectId: true,
+        },
+      });
 
-    console.log(
-      `Updating status to in progress for project id:`,
-      offering.projectId
-    );
-    await prisma.project.update({
-      where: {
-        id: offering.projectId,
-      },
-      data: {
-        status: "IN_PROGRESS",
-      },
+      console.log(
+        `Updating status to in progress for project id:`,
+        offering.projectId
+      );
+      await trx.project.update({
+        where: {
+          id: offering.projectId,
+        },
+        data: {
+          status: "IN_PROGRESS",
+        },
+      });
     });
 
     interaction.message.edit({
@@ -141,40 +146,48 @@ export const chooseTeamInteraction = async ({
     },
   });
 
-  console.log(
-    "updating teamId for project:",
-    JSON.stringify({
-      projectId,
-      teamId,
-    })
-  );
-  await prisma.project.update({
-    where: {
-      id: projectId,
-    },
-    data: {
-      teamId: teamId,
-    },
+  const { offering } = await prisma.$transaction(async (trx) => {
+    console.log(
+      "updating teamId for project:",
+      JSON.stringify({
+        projectId,
+        teamId,
+      })
+    );
+    await trx.project.update({
+      where: {
+        id: projectId,
+      },
+      data: {
+        teamId: teamId,
+      },
+    });
+    console.log("teamId updated for project:", projectId);
+
+    const { offering } = await createOfferingAndInteraction({
+      discordClient: interaction.client,
+      prisma: trx,
+      body: {
+        projectId: projectId,
+        teamId: teamId,
+        deadline: project.deadline.toISOString(),
+        fee: project.fee,
+        note: project.note,
+      },
+      project: {
+        name: project.name,
+        imageRatio: project.imageRatio,
+        clientName: project.clientName,
+      },
+    });
+
+    await interaction.channel?.delete().catch(() => {
+      console.log("Failed to delete channel");
+    });
+
+    return { offering };
   });
 
-  const { offering } = await createOfferingAndInteraction({
-    discordClient: interaction.client,
-    prisma,
-    body: {
-      projectId: projectId,
-      teamId: teamId,
-      deadline: project.deadline.toISOString(),
-      fee: project.fee,
-      note: project.note,
-    },
-    project: {
-      name: project.name,
-      imageRatio: project.imageRatio,
-      clientName: project.clientName,
-    },
-  });
-
-  interaction.channel?.delete();
   console.log(
     `Delete channel ${interaction.channel?.id} for offering ${offering.id}`
   );

@@ -13,7 +13,7 @@ export const getOfferingTeamThreadFromProjectId = async ({
   status = "ACCEPTED",
 }: {
   discordClient: Client;
-  prisma: PrismaClient;
+  prisma: Omit<PrismaClient<Prisma.PrismaClientOptions>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
   projectId: string;
   status?: OfferingStatus;
 }) => {
