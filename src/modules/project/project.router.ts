@@ -7,6 +7,7 @@ import type { Prisma } from "../../../prisma/generated/client/index.js";
 import { createProjectJsonSchema } from "./project.schema.js";
 import { createOfferingAndInteraction } from "../offering/offering.service.js";
 import { getOfferingTeamThreadFromProjectId } from "./project.service.js";
+import { useJWT } from "../../libs/jwt.js";
 // import { createOfferingDeadlineNotification } from "../offering/offering.queue.js";
 
 const projectRoute = new Hono().basePath("/project");
@@ -16,6 +17,7 @@ const sortTeam = z.enum(["created_at:asc", "created_at:desc"]);
 
 projectRoute.get(
   "/list",
+  useJWT(),
   zValidator(
     "query",
     z.object({
@@ -98,11 +100,12 @@ projectRoute.get(
 
 projectRoute.post(
   "/",
+  useJWT(),
   zValidator("json", createProjectJsonSchema),
   async (c) => {
     const body = c.req.valid("json");
 
-   const doc =  await prisma.$transaction(async (trx) => {
+    const doc = await prisma.$transaction(async (trx) => {
       console.log("Creating project:", JSON.stringify(body));
       const result = await trx.project.create({
         data: body,
@@ -145,7 +148,7 @@ projectRoute.post(
   }
 );
 
-projectRoute.delete("/:id", async (c) => {
+projectRoute.delete("/:id", useJWT(), async (c) => {
   const id = c.req.param("id");
   const result = await prisma.project.update({
     data: {
@@ -165,6 +168,7 @@ projectRoute.delete("/:id", async (c) => {
 
 projectRoute.patch(
   "/:id",
+  useJWT(),
   zValidator(
     "json",
     z.object({

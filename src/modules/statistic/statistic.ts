@@ -3,11 +3,13 @@ import { Hono } from "hono";
 import { z } from "zod";
 import prisma from "../core/libs/prisma.js";
 import { add, addDays, endOfDay, format, startOfDay } from "date-fns";
+import { useJWT } from "../../libs/jwt.js";
 
 const statisticRoute = new Hono().basePath("/statistic");
 
 statisticRoute.get(
   "/image-production-per-week",
+  useJWT(),
   zValidator(
     "query",
     z.object({ monthIndex: z.coerce.number(), year: z.coerce.number() })

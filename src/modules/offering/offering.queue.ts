@@ -1,6 +1,6 @@
 import Bull from "bull";
 import type { Offering } from "../../../prisma/generated/client/index.js";
-import discordClient from "../../discord.js";
+import { discordClient } from "../../libs/discord.js";
 import { getOfferingTeamThreadFromProjectId } from "../project/project.service.js";
 import prisma from "../core/libs/prisma.js";
 import { redisHost, redisPort } from "../core/libs/redis.js";

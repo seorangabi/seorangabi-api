@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { Prisma } from "../../../prisma/generated/client/index.js";
 import { isUndefined } from "../core/libs/utils.js";
 import prisma from "../core/libs/prisma.js";
+import { useJWT } from "../../libs/jwt.js";
 
 const offeringRoute = new Hono().basePath("/offering");
 
@@ -12,6 +13,7 @@ const sortOffering = z.enum(["created_at:asc", "created_at:desc"]);
 
 offeringRoute.get(
   "/list",
+  useJWT(),
   zValidator(
     "query",
     z.object({

@@ -4,11 +4,13 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { isUndefined } from "../core/libs/utils.js";
 import type { Prisma } from "../../../prisma/generated/client/index.js";
+import { useJWT } from "../../libs/jwt.js";
 
 const teamRoute = new Hono().basePath("/team");
 
 teamRoute.get(
   "/list",
+  useJWT(),
   zValidator(
     "query",
     z.object({
@@ -38,6 +40,7 @@ teamRoute.get(
 
 teamRoute.post(
   "/",
+  useJWT(),
   zValidator(
     "json",
     z.object({
@@ -62,7 +65,7 @@ teamRoute.post(
   }
 );
 
-teamRoute.delete("/:id", async (c) => {
+teamRoute.delete("/:id", useJWT(), async (c) => {
   const id = c.req.param("id");
   const result = await prisma.team.update({
     data: {
@@ -82,6 +85,7 @@ teamRoute.delete("/:id", async (c) => {
 
 teamRoute.patch(
   "/:id",
+  useJWT(),
   zValidator(
     "json",
     z.object({

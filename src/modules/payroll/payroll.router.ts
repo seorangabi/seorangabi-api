@@ -4,6 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { isUndefined } from "../core/libs/utils.js";
 import type { Prisma } from "../../../prisma/generated/client/index.js";
+import { useJWT } from "../../libs/jwt.js";
 
 const payrollRoute = new Hono().basePath("/payroll");
 
@@ -31,6 +32,7 @@ const onStatusChange = async ({
 
 payrollRoute.get(
   "/list",
+  useJWT(),
   zValidator(
     "query",
     z.object({
@@ -89,6 +91,7 @@ payrollRoute.get(
 
 payrollRoute.post(
   "/",
+  useJWT(),
   zValidator(
     "json",
     z.object({
@@ -151,7 +154,7 @@ payrollRoute.post(
   }
 );
 
-payrollRoute.delete("/:id", async (c) => {
+payrollRoute.delete("/:id", useJWT(), async (c) => {
   const id = c.req.param("id");
 
   const result = await prisma.payroll.update({
@@ -182,6 +185,7 @@ payrollRoute.delete("/:id", async (c) => {
 
 payrollRoute.patch(
   "/:id",
+  useJWT(),
   zValidator(
     "json",
     z.object({
