@@ -24,13 +24,12 @@ model User {
 model Project {
   id         String        @id @default(uuid())
   name       String
-  fee        Float // default value for Offering
-  note       String? // default value for Offering
-  deadline   DateTime // default value for Offering
-  imageRatio String // default value for Offering
+  fee        Float // total fee from tasks
+  imageCount Int           @default(0)
+  deadline   DateTime
+  imageRatio String
   status     ProjectStatus @default(OFFERING)
   teamId     String?
-  imageCount Int           @default(1) // default value for Offering
   clientName String
 
   createdAt DateTime  @default(now())
@@ -44,6 +43,7 @@ model Project {
 
   payroll Payroll? @relation(fields: [payrollId], references: [id])
   team    Team?    @relation(fields: [teamId], references: [id])
+  tasks   Task[]
 
   @@index([id])
   @@index([teamId])
@@ -73,10 +73,7 @@ model Offering {
   status          OfferingStatus @default(OFFERING)
   discordThreadId String
 
-  confirmationDuration Int      @default(0) // millisecond
-  fee                  Int
-  note                 String?
-  deadline             DateTime
+  confirmationDuration Int @default(0) // millisecond
 
   team      Team     @relation(fields: [teamId], references: [id])
   project   Project  @relation(fields: [projectId], references: [id])
@@ -101,6 +98,20 @@ model Payroll {
 
   @@index([id])
   @@index([teamId])
+}
+
+model Task {
+  id             String   @id @default(uuid())
+  fee            Int
+  note           String
+  imageCount     Int
+  project        Project  @relation(fields: [projectId], references: [id])
+  projectId      String
+  createdAt      DateTime @default(now())
+  attachmentPath String
+
+  @@index([id])
+  @@index([projectId])
 }
 
 enum PayrollStatus {

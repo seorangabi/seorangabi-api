@@ -144,6 +144,9 @@ export const chooseTeamInteraction = async ({
     where: {
       id: projectId,
     },
+    include: {
+      tasks: true,
+    },
   });
 
   const { offering } = await prisma.$transaction(async (trx) => {
@@ -172,13 +175,13 @@ export const chooseTeamInteraction = async ({
         teamId: teamId,
         deadline: project.deadline.toISOString(),
         fee: project.fee,
-        note: project.note,
       },
       project: {
         name: project.name,
         imageRatio: project.imageRatio,
         clientName: project.clientName,
       },
+      tasks: project.tasks,
     });
 
     await interaction.channel?.delete().catch(() => {

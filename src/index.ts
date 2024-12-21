@@ -5,10 +5,22 @@ import { DiscordAPIError } from "discord.js";
 import { HTTPException } from "hono/http-exception";
 import * as discord from "./libs/discord.js";
 import api from "./api.js";
+import { serveStatic } from "@hono/node-server/serve-static";
+import { showRoutes } from "hono/dev";
 
 discord.start();
 
 const app = new Hono();
+
+app.use(
+  "/uploads/*",
+  serveStatic({
+    root: "./",
+    onNotFound: (path, c) => {
+      console.log(`${path} is not found, you access ${c.req.path}`);
+    },
+  })
+);
 
 // Middleware to inject Discord client into context
 app.use("*", async (c, next) => {
@@ -23,6 +35,11 @@ app.use(prettyJSON());
 
 app.route("/", discord.Route);
 app.route("/v1", api);
+
+showRoutes(app, {
+  colorize: true,
+  // verbose: true,
+});
 
 // @ts-ignore
 app.onError((err, c) => {

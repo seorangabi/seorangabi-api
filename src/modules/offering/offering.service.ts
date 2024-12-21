@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import {
   ActionRowBuilder,
+  AttachmentBuilder,
   ChannelType,
   Client,
   EmbedBuilder,
@@ -16,12 +17,14 @@ import { formatRupiah } from "../core/libs/utils.js";
 import type { z } from "zod";
 import type { createOfferingJsonSchema } from "./offering.schema.js";
 import { HTTPException } from "hono/http-exception";
+import { createReadStream } from "fs";
 
 export const createOfferingAndInteraction = async ({
   discordClient,
   prisma,
   body,
   project,
+  tasks,
 }: {
   discordClient: Client;
   prisma: Omit<
@@ -34,6 +37,11 @@ export const createOfferingAndInteraction = async ({
     imageRatio: string;
     clientName: string;
   };
+  tasks: {
+    fee: number;
+    note?: string;
+    attachmentPath: string;
+  }[];
 }) => {
   console.log("Fetching team:", body.teamId);
   const team = await prisma.team.findUniqueOrThrow({
@@ -79,9 +87,6 @@ export const createOfferingAndInteraction = async ({
     data: {
       projectId: body.projectId,
       teamId: body.teamId,
-      deadline: body.deadline,
-      fee: body.fee,
-      note: body.note,
       status: "OFFERING",
       discordThreadId: thread.id,
       confirmationDuration: 30 * 60 * 1000, // 30 menit
@@ -106,7 +111,6 @@ export const createOfferingAndInteraction = async ({
 🌟 NEW PROJECT 🌟
 ${project.name}
 DL: ${deadlineText}
-FEE : ${formatRupiah(body.fee)}
 RATIO : ${project.imageRatio || "N/A"}
 CLIENT : ${project.clientName || "N/A"}
     `,
@@ -135,6 +139,16 @@ CLIENT : ${project.clientName || "N/A"}
     components: [row],
   });
   console.log("Message sent");
+
+  tasks.forEach(async (task, index) => {
+    const fileStream = createReadStream(task.attachmentPath);
+    const attachment = new AttachmentBuilder(fileStream, { name: "task.png" });
+
+    await thread.send({
+      content: `${index + 1}) FEE : ${formatRupiah(task.fee)}\n${task.note}`,
+      files: [attachment],
+    });
+  });
 
   return {
     offeringId: offering.id,

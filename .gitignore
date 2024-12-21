@@ -30,3 +30,9 @@ lerna-debug.log*
 dist
 
 /prisma/generated
+
+# exclude everything
+uploads/*
+
+# exception to the rule
+!uploads/.gitkeep 

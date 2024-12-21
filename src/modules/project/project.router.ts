@@ -1,38 +1,27 @@
 import { Hono } from "hono";
 import prisma from "../core/libs/prisma.js";
 import { zValidator } from "@hono/zod-validator";
-import { z } from "zod";
 import { isUndefined } from "../core/libs/utils.js";
 import type { Prisma } from "../../../prisma/generated/client/index.js";
-import { createProjectJsonSchema } from "./project.schema.js";
+import {
+  postProjectFormDataSchema,
+  getListProjectJsonSchema,
+  patchProjectJsonSchema,
+} from "./project.schema.js";
 import { createOfferingAndInteraction } from "../offering/offering.service.js";
 import { getOfferingTeamThreadFromProjectId } from "./project.service.js";
 import { useJWT } from "../../libs/jwt.js";
+import path from "node:path";
 // import { createOfferingDeadlineNotification } from "../offering/offering.queue.js";
+import { writeFile } from "node:fs/promises";
+import { HTTPException } from "hono/http-exception";
 
 const projectRoute = new Hono().basePath("/project");
-
-const withTeam = z.enum(["team"]);
-const sortTeam = z.enum(["created_at:asc", "created_at:desc"]);
 
 projectRoute.get(
   "/list",
   useJWT(),
-  zValidator(
-    "query",
-    z.object({
-      id_eq: z.string().optional(),
-      team_id_eq: z.string().optional(),
-      status_eq: z
-        .enum(["OFFERING", "IN_PROGRESS", "REVISION", "DONE", "CANCELLED"])
-        .optional(),
-      is_paid_eq: z.enum(["true", "false"]).optional(),
-      skip: z.coerce.number().optional(),
-      limit: z.coerce.number().optional(),
-      with: z.union([withTeam, z.array(withTeam)]).optional(),
-      sort: z.union([sortTeam, z.array(sortTeam)]).optional(),
-    })
-  ),
+  zValidator("query", getListProjectJsonSchema),
   async (c) => {
     const query = c.req.valid("query");
 
@@ -98,17 +87,80 @@ projectRoute.get(
   }
 );
 
+const uploadDir = path.join(process.cwd(), "uploads");
+
 projectRoute.post(
   "/",
   useJWT(),
-  zValidator("json", createProjectJsonSchema),
+  zValidator("form", postProjectFormDataSchema),
   async (c) => {
-    const body = c.req.valid("json");
+    const form = c.req.valid("form");
+
+    const mappedTask: {
+      fee: number;
+      imageCount: number;
+      note?: string;
+      attachmentPath: string;
+    }[] = [];
+
+    for (const key in form.tasks) {
+      const task = form.tasks[key];
+      const file = task.file;
+
+      const extension = file.name.split(".").pop();
+
+      const filePath = path.join(uploadDir, `task_${Date.now()}.${extension}`);
+      await writeFile(filePath, file.stream());
+      mappedTask.push({
+        fee: task.fee,
+        imageCount: task.imageCount,
+        note: task.note || "",
+        attachmentPath: filePath,
+      });
+    }
 
     const doc = await prisma.$transaction(async (trx) => {
-      console.log("Creating project:", JSON.stringify(body));
+      const { tasks, totalFee, totalImageCount } = mappedTask.reduce(
+        (acc, task) => {
+          const temp: Prisma.TaskCreateManyProjectInput = {
+            fee: +task.fee,
+            imageCount: task.imageCount,
+            note: task.note || "",
+            attachmentPath: task.attachmentPath,
+          };
+
+          return {
+            tasks: [...acc.tasks, temp],
+            totalFee: acc.totalFee + task.fee,
+            totalImageCount: acc.totalImageCount + task.imageCount,
+          };
+        },
+        {
+          tasks: [],
+          totalFee: 0,
+          totalImageCount: 0,
+        } as {
+          tasks: Prisma.TaskCreateManyProjectInput[];
+          totalFee: number;
+          totalImageCount: number;
+        }
+      );
+
+      console.log("Creating project:", JSON.stringify(form));
       const result = await trx.project.create({
-        data: body,
+        data: {
+          name: form.name,
+          imageRatio: form.imageRatio,
+          teamId: form.teamId,
+          clientName: form.clientName,
+          deadline: form.deadline,
+
+          fee: +totalFee,
+          imageCount: +totalImageCount,
+          tasks: {
+            createMany: { data: tasks },
+          },
+        },
       });
       console.log("Project created:", result.id);
 
@@ -117,18 +169,18 @@ projectRoute.post(
       const { offering, team } = await createOfferingAndInteraction({
         prisma: trx,
         body: {
-          deadline: body.deadline,
-          fee: body.fee,
-          note: body.note,
+          deadline: form.deadline,
+          fee: totalFee,
           projectId: result.id,
-          teamId: body.teamId,
+          teamId: form.teamId,
         },
         discordClient,
         project: {
-          clientName: body.clientName,
-          name: body.name,
-          imageRatio: body.imageRatio,
+          clientName: form.clientName,
+          name: form.name,
+          imageRatio: form.imageRatio,
         },
+        tasks,
       });
 
       // console.log("Creating offering deadline notification");
@@ -169,24 +221,7 @@ projectRoute.delete("/:id", useJWT(), async (c) => {
 projectRoute.patch(
   "/:id",
   useJWT(),
-  zValidator(
-    "json",
-    z.object({
-      name: z.string().optional(),
-      imageRatio: z.string().optional(),
-      status: z
-        .enum(["OFFERING", "IN_PROGRESS", "REVISION", "DONE", "CANCELLED"])
-        .optional(),
-      teamId: z.string().optional(),
-      imageCount: z.number().optional(),
-      clientName: z.string().optional(),
-
-      // Offering
-      fee: z.number().optional(),
-      note: z.string().nullable().optional(),
-      deadline: z.string().optional(),
-    })
-  ),
+  zValidator("json", patchProjectJsonSchema),
   async (c) => {
     const id = c.req.param("id");
     const body = c.req.valid("json");
@@ -219,7 +254,6 @@ projectRoute.patch(
 
           // Offering
           fee: isUndefined(body.fee) ? undefined : body.fee,
-          note: isUndefined(body.note) ? undefined : body.note,
           deadline: isUndefined(body.deadline) ? undefined : body.deadline,
         },
       });
@@ -260,18 +294,6 @@ projectRoute.patch(
             projectId: id,
           })
         );
-        await trx.offering.updateMany({
-          where: {
-            teamId: result.teamId,
-            projectId: id,
-            status: "ACCEPTED",
-          },
-          data: {
-            fee: isUndefined(body.fee) ? undefined : body.fee,
-            note: isUndefined(body.note) ? undefined : body.note,
-            deadline: isUndefined(body.deadline) ? undefined : body.deadline,
-          },
-        });
       }
       return result;
     });
