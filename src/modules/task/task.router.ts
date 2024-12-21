@@ -76,6 +76,8 @@ taskRouter.post(
           fee: body.fee,
           imageCount: body.imageCount,
           note: body.note,
+          // TODO: fix this
+          attachmentPath: "",
         },
       });
 
