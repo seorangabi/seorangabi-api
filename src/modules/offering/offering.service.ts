@@ -40,7 +40,7 @@ export const createOfferingAndInteraction = async ({
   tasks: {
     fee: number;
     note?: string;
-    attachmentPath: string;
+    attachmentUrl: string;
   }[];
 }) => {
   console.log("Fetching team:", body.teamId);
@@ -140,15 +140,17 @@ CLIENT : ${project.clientName || "N/A"}
   });
   console.log("Message sent");
 
-  tasks.forEach(async (task, index) => {
-    const fileStream = createReadStream(task.attachmentPath);
-    const attachment = new AttachmentBuilder(fileStream, { name: "task.png" });
+  for (const task of tasks) {
+    const name = task.attachmentUrl.split("/").pop();
+    const attachment = new AttachmentBuilder(task.attachmentUrl, {
+      name,
+    });
 
     await thread.send({
-      content: `${index + 1}) FEE : ${formatRupiah(task.fee)}\n${task.note}`,
+      content: `FEE : ${formatRupiah(task.fee)}\n${task.note}`,
       files: [attachment],
     });
-  });
+  }
 
   return {
     offeringId: offering.id,

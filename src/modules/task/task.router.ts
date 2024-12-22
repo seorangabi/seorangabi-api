@@ -64,6 +64,7 @@ taskRouter.post(
       fee: z.number(),
       imageCount: z.number(),
       note: z.string(),
+      attachmentUrl: z.string(),
     })
   ),
   async (c) => {
@@ -76,8 +77,7 @@ taskRouter.post(
           fee: body.fee,
           imageCount: body.imageCount,
           note: body.note,
-          // TODO: fix this
-          attachmentPath: "",
+          attachmentUrl: body.attachmentUrl,
         },
       });
 
@@ -104,6 +104,7 @@ taskRouter.patch(
       fee: z.number().optional(),
       imageCount: z.number().optional(),
       note: z.string().optional(),
+      attachmentUrl: z.string().optional(),
     })
   ),
   async (c) => {
@@ -118,6 +119,9 @@ taskRouter.patch(
         data: {
           fee: isUndefined(body.fee) ? undefined : body.fee,
           note: isUndefined(body.note) ? undefined : body.note,
+          attachmentUrl: isUndefined(body.attachmentUrl)
+            ? undefined
+            : body.attachmentUrl,
         },
       });
 

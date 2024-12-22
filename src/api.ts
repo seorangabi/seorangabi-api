@@ -8,6 +8,7 @@ import statisticRoute from "./modules/statistic/statistic.js";
 import offeringRoute from "./modules/offering/offering.router.js";
 import authRoute from "./modules/auth/auth.router.js";
 import taskRouter from "./modules/task/task.router.js";
+import uploadRouter from "./modules/upload/upload.router.js";
 
 const api = new Hono();
 
@@ -29,5 +30,6 @@ api.route("/", payrollRoute);
 api.route("/", statisticRoute);
 api.route("/", offeringRoute);
 api.route("/", taskRouter);
+api.route("/", uploadRouter);
 
 export default api;

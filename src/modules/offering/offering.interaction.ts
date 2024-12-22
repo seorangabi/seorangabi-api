@@ -144,8 +144,13 @@ export const chooseTeamInteraction = async ({
     where: {
       id: projectId,
     },
-    include: {
-      tasks: true,
+  });
+  const tasks = await prisma.task.findMany({
+    where: {
+      projectId: projectId,
+    },
+    orderBy: {
+      createdAt: "asc",
     },
   });
 
@@ -181,7 +186,7 @@ export const chooseTeamInteraction = async ({
         imageRatio: project.imageRatio,
         clientName: project.clientName,
       },
-      tasks: project.tasks,
+      tasks: tasks,
     });
 
     await interaction.channel?.delete().catch(() => {

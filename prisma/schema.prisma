@@ -101,14 +101,14 @@ model Payroll {
 }
 
 model Task {
-  id             String   @id @default(uuid())
-  fee            Int
-  note           String
-  imageCount     Int
-  project        Project  @relation(fields: [projectId], references: [id])
-  projectId      String
-  createdAt      DateTime @default(now())
-  attachmentPath String
+  id            String   @id @default(uuid())
+  fee           Int
+  note          String
+  imageCount    Int
+  project       Project  @relation(fields: [projectId], references: [id])
+  projectId     String
+  createdAt     DateTime @default(now())
+  attachmentUrl String
 
   @@index([id])
   @@index([projectId])

@@ -4,7 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { isUndefined } from "../core/libs/utils.js";
 import type { Prisma } from "../../../prisma/generated/client/index.js";
 import {
-  postProjectFormDataSchema,
+  postProjectJsonSchema,
   getListProjectJsonSchema,
   patchProjectJsonSchema,
 } from "./project.schema.js";
@@ -14,7 +14,7 @@ import { useJWT } from "../../libs/jwt.js";
 import path from "node:path";
 // import { createOfferingDeadlineNotification } from "../offering/offering.queue.js";
 import { writeFile } from "node:fs/promises";
-import { HTTPException } from "hono/http-exception";
+import { randomUUID } from "node:crypto";
 
 const projectRoute = new Hono().basePath("/project");
 
@@ -87,46 +87,24 @@ projectRoute.get(
   }
 );
 
-const uploadDir = path.join(process.cwd(), "uploads");
-
 projectRoute.post(
   "/",
   useJWT(),
-  zValidator("form", postProjectFormDataSchema),
+  zValidator("json", postProjectJsonSchema),
   async (c) => {
-    const form = c.req.valid("form");
-
-    const mappedTask: {
-      fee: number;
-      imageCount: number;
-      note?: string;
-      attachmentPath: string;
-    }[] = [];
-
-    for (const key in form.tasks) {
-      const task = form.tasks[key];
-      const file = task.file;
-
-      const extension = file.name.split(".").pop();
-
-      const filePath = path.join(uploadDir, `task_${Date.now()}.${extension}`);
-      await writeFile(filePath, file.stream());
-      mappedTask.push({
-        fee: task.fee,
-        imageCount: task.imageCount,
-        note: task.note || "",
-        attachmentPath: filePath,
-      });
-    }
+    const form = c.req.valid("json");
 
     const doc = await prisma.$transaction(async (trx) => {
-      const { tasks, totalFee, totalImageCount } = mappedTask.reduce(
+      const projectId = randomUUID();
+
+      const { tasks, totalFee, totalImageCount } = form.tasks.reduce(
         (acc, task) => {
-          const temp: Prisma.TaskCreateManyProjectInput = {
-            fee: +task.fee,
+          const temp: Prisma.TaskCreateManyInput = {
+            projectId,
+            fee: task.fee,
             imageCount: task.imageCount,
             note: task.note || "",
-            attachmentPath: task.attachmentPath,
+            attachmentUrl: task.attachmentUrl,
           };
 
           return {
@@ -140,7 +118,7 @@ projectRoute.post(
           totalFee: 0,
           totalImageCount: 0,
         } as {
-          tasks: Prisma.TaskCreateManyProjectInput[];
+          tasks: Prisma.TaskCreateManyInput[];
           totalFee: number;
           totalImageCount: number;
         }
@@ -149,20 +127,23 @@ projectRoute.post(
       console.log("Creating project:", JSON.stringify(form));
       const result = await trx.project.create({
         data: {
+          id: projectId,
           name: form.name,
           imageRatio: form.imageRatio,
           teamId: form.teamId,
           clientName: form.clientName,
           deadline: form.deadline,
 
-          fee: +totalFee,
-          imageCount: +totalImageCount,
-          tasks: {
-            createMany: { data: tasks },
-          },
+          fee: totalFee,
+          imageCount: totalImageCount,
         },
       });
       console.log("Project created:", result.id);
+
+      // sort tasks by created_at
+      const tasksResult = await trx.task.createMany({
+        data: tasks,
+      });
 
       const discordClient = c.get("discordClient");
 

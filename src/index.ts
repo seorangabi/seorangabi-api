@@ -7,6 +7,7 @@ import * as discord from "./libs/discord.js";
 import api from "./api.js";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { showRoutes } from "hono/dev";
+import { useJWT } from "./libs/jwt.js";
 
 discord.start();
 
@@ -42,7 +43,8 @@ showRoutes(app, {
 });
 
 // @ts-ignore
-app.onError((err, c) => {
+app.onError((err) => {
+  console.log(err);
   if (err instanceof HTTPException) return err.getResponse();
 
   if (err instanceof DiscordAPIError) {
@@ -56,7 +58,6 @@ app.onError((err, c) => {
       status: 500,
     });
   }
-  console.log(err);
 });
 
 const port = 3020;
