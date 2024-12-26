@@ -11,9 +11,7 @@ import {
 import { createOfferingAndInteraction } from "../offering/offering.service.js";
 import { getOfferingTeamThreadFromProjectId } from "./project.service.js";
 import { useJWT } from "../../libs/jwt.js";
-import path from "node:path";
 // import { createOfferingDeadlineNotification } from "../offering/offering.queue.js";
-import { writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 
 const projectRoute = new Hono().basePath("/project");
@@ -94,7 +92,7 @@ projectRoute.post(
   async (c) => {
     const form = c.req.valid("json");
 
-    const doc = await prisma.$transaction(async (trx) => {
+    const { project } = await prisma.$transaction(async (trx) => {
       const projectId = randomUUID();
 
       const { tasks, totalFee, totalImageCount } = form.tasks.reduce(
@@ -125,7 +123,7 @@ projectRoute.post(
       );
 
       console.log("Creating project:", JSON.stringify(form));
-      const result = await trx.project.create({
+      const project = await trx.project.create({
         data: {
           id: projectId,
           name: form.name,
@@ -138,7 +136,7 @@ projectRoute.post(
           imageCount: totalImageCount,
         },
       });
-      console.log("Project created:", result.id);
+      console.log("Project created:", project.id);
 
       // sort tasks by created_at
       const tasksResult = await trx.task.createMany({
@@ -152,7 +150,7 @@ projectRoute.post(
         body: {
           deadline: form.deadline,
           fee: totalFee,
-          projectId: result.id,
+          projectId: project.id,
           teamId: form.teamId,
         },
         discordClient,
@@ -171,11 +169,11 @@ projectRoute.post(
       // });
       // console.log("Offering deadline notification created");
 
-      return result;
+      return { project };
     });
     return c.json({
       data: {
-        doc: doc,
+        doc: project,
       },
     });
   }
@@ -207,14 +205,14 @@ projectRoute.patch(
     const id = c.req.param("id");
     const body = c.req.valid("json");
 
-    const result = await prisma.$transaction(async (trx) => {
+    const { project } = await prisma.$transaction(async (trx) => {
       console.log(
         "Updating project",
         JSON.stringify({
           id,
         })
       );
-      const result = await trx.project.update({
+      const project = await trx.project.update({
         where: {
           id,
         },
@@ -267,21 +265,21 @@ projectRoute.patch(
         });
       }
 
-      if (result.teamId) {
+      if (project.teamId) {
         console.log(
           "Updating Offering",
           JSON.stringify({
-            teamId: result.teamId,
+            teamId: project.teamId,
             projectId: id,
           })
         );
       }
-      return result;
+      return { project };
     });
 
     return c.json({
       data: {
-        doc: result,
+        doc: project,
       },
     });
   }

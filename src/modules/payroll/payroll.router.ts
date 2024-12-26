@@ -3,15 +3,29 @@ import prisma from "../core/libs/prisma.js";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { isUndefined } from "../core/libs/utils.js";
-import type { Prisma } from "../../../prisma/generated/client/index.js";
+import type {
+  Prisma,
+  PrismaClient,
+} from "../../../prisma/generated/client/index.js";
 import { useJWT } from "../../libs/jwt.js";
+import {
+  patchPayrollJsonSchema,
+  getListPayrollQuerySchema,
+  postPayrollJsonSchema,
+  deletePayrollParamSchema,
+} from "./payroll.schema.js";
 
 const payrollRoute = new Hono().basePath("/payroll");
 
 const onStatusChange = async ({
+  prisma,
   newStatus,
   projectIds,
 }: {
+  prisma: Omit<
+    PrismaClient<Prisma.PrismaClientOptions>,
+    "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+  >;
   newStatus: "DRAFT" | "PAID";
   projectIds: string[];
 }) => {
@@ -33,18 +47,7 @@ const onStatusChange = async ({
 payrollRoute.get(
   "/list",
   useJWT(),
-  zValidator(
-    "query",
-    z.object({
-      id_eq: z.string().optional(),
-      with: z.union([z.enum(["team"]), z.array(z.enum(["team"]))]).optional(),
-      status_eq: z.enum(["DRAFT", "PAID"]).optional(),
-      team_id_eq: z.string().optional(),
-      skip: z.coerce.number().optional(),
-      limit: z.coerce.number().optional(),
-    })
-  ),
-
+  zValidator("query", getListPayrollQuerySchema),
   async (c) => {
     const query = c.req.valid("query");
 
@@ -53,6 +56,19 @@ payrollRoute.get(
       const withArray = Array.isArray(query.with) ? query.with : [query.with];
 
       if (withArray.includes("team")) include.team = true;
+      if (withArray.includes("projects")) include.projects = true;
+    }
+
+    const orderBy: Prisma.PayrollOrderByWithRelationInput = {};
+    if (!isUndefined(query.sort)) {
+      const sortArray = Array.isArray(query.sort) ? query.sort : [query.sort];
+
+      if (sortArray.includes("created_at:asc")) {
+        orderBy.createdAt = "asc";
+      }
+      if (sortArray.includes("created_at:desc")) {
+        orderBy.createdAt = "desc";
+      }
     }
 
     const where: Prisma.PayrollWhereInput = {
@@ -70,20 +86,27 @@ payrollRoute.get(
 
     const result = await prisma.payroll.findMany({
       include,
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy,
       where,
-      ...(!isUndefined(query.skip) && {
-        skip: query.skip,
-      }),
-      ...(!isUndefined(query.limit) && {
-        take: query.limit,
-      }),
+      ...(!isUndefined(query.skip) && { skip: query.skip }),
+      ...(!isUndefined(query.limit) && { take: query.limit + 1 }),
     });
+
+    let hasNext = false;
+    if (query.limit && result.length > query.limit) {
+      result.pop();
+      hasNext = true;
+    }
+
+    const hasPrev = !isUndefined(query.skip) && query.skip > 0;
+
     return c.json({
       data: {
         docs: result,
+        pagination: {
+          hasNext,
+          hasPrev,
+        },
       },
     });
   }
@@ -92,134 +115,137 @@ payrollRoute.get(
 payrollRoute.post(
   "/",
   useJWT(),
-  zValidator(
-    "json",
-    z.object({
-      periodStart: z.string(),
-      periodEnd: z.string(),
-      status: z.enum(["DRAFT", "PAID"]),
-      teamId: z.string(),
-      projectIds: z.array(z.string()),
-    })
-  ),
+  zValidator("json", postPayrollJsonSchema),
   async (c) => {
     const body = c.req.valid("json");
 
-    const projects = await prisma.project.findMany({
-      where: {
-        id: {
-          in: body.projectIds,
-        },
-      },
-    });
-
-    const amount = projects.reduce((acc, project) => acc + project.fee, 0);
-
-    const result = await prisma.payroll.create({
-      data: {
-        periodStart: body.periodStart,
-        periodEnd: body.periodEnd,
-        status: body.status,
-        teamId: body.teamId,
-        amount: amount,
-        projects: {
-          connect: [...projects.map((project) => ({ id: project.id }))],
-        },
-      },
-    });
-
-    if (body.status === "PAID") {
-      await prisma.project.updateMany({
+    const { payroll } = await prisma.$transaction(async (trx) => {
+      const projects = await trx.project.findMany({
         where: {
           id: {
             in: body.projectIds,
           },
         },
+      });
+
+      const amount = projects.reduce((acc, project) => acc + project.fee, 0);
+
+      const payroll = await trx.payroll.create({
         data: {
-          isPaid: true,
+          periodStart: body.periodStart,
+          periodEnd: body.periodEnd,
+          status: body.status,
+          teamId: body.teamId,
+          amount: amount,
+          projects: {
+            connect: [...projects.map((project) => ({ id: project.id }))],
+          },
         },
       });
-    }
 
-    onStatusChange({
-      newStatus: body.status,
-      projectIds: body.projectIds,
+      if (body.status === "PAID") {
+        await trx.project.updateMany({
+          where: {
+            id: {
+              in: body.projectIds,
+            },
+          },
+          data: {
+            isPaid: true,
+          },
+        });
+      }
+
+      await onStatusChange({
+        prisma: trx,
+        newStatus: body.status,
+        projectIds: body.projectIds,
+      });
+
+      return { payroll };
     });
 
     return c.json({
       data: {
-        doc: result,
+        doc: payroll,
       },
     });
   }
 );
 
-payrollRoute.delete("/:id", useJWT(), async (c) => {
-  const id = c.req.param("id");
+payrollRoute.delete(
+  "/:id",
+  useJWT(),
+  zValidator("param", deletePayrollParamSchema),
+  async (c) => {
+    const { id } = c.req.valid("param");
 
-  const result = await prisma.payroll.update({
-    where: {
-      id,
-    },
-    data: {
-      deletedAt: new Date(),
-    },
-  });
+    const { payroll } = await prisma.$transaction(async (trx) => {
+      const payroll = await trx.payroll.update({
+        where: {
+          id,
+        },
+        data: {
+          deletedAt: new Date(),
+        },
+      });
 
-  // disconnect projects
-  await prisma.project.updateMany({
-    where: {
-      payrollId: id,
-    },
-    data: {
-      payrollId: null,
-    },
-  });
+      // disconnect projects
+      await trx.project.updateMany({
+        where: {
+          payrollId: id,
+        },
+        data: {
+          payrollId: null,
+        },
+      });
 
-  return c.json({
-    data: {
-      doc: result,
-    },
-  });
-});
+      return { payroll };
+    });
+
+    return c.json({
+      data: {
+        doc: payroll,
+      },
+    });
+  }
+);
 
 payrollRoute.patch(
   "/:id",
   useJWT(),
-  zValidator(
-    "json",
-    z.object({
-      status: z.enum(["PAID"]).optional(),
-    })
-  ),
+  zValidator("json", patchPayrollJsonSchema),
   async (c) => {
     const id = c.req.param("id");
     const body = c.req.valid("json");
 
-    await prisma.payroll.update({
-      where: {
-        id,
-      },
-      data: {
-        ...(isUndefined(body.status) ? {} : { status: body.status }),
-      },
-    });
-
-    if (body.status === "PAID") {
-      const projectIds = await prisma.project.findMany({
+    await prisma.$transaction(async (trx) => {
+      await trx.payroll.update({
         where: {
-          payrollId: id,
+          id,
         },
-        select: {
-          id: true,
+        data: {
+          ...(isUndefined(body.status) ? {} : { status: body.status }),
         },
       });
 
-      onStatusChange({
-        newStatus: body.status,
-        projectIds: projectIds.map((project) => project.id),
-      });
-    }
+      if (body.status === "PAID") {
+        const projectIds = await trx.project.findMany({
+          where: {
+            payrollId: id,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        await onStatusChange({
+          prisma: trx,
+          newStatus: body.status,
+          projectIds: projectIds.map((project) => project.id),
+        });
+      }
+    });
 
     return c.json({
       data: {},

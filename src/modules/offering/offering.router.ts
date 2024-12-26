@@ -5,23 +5,14 @@ import type { Prisma } from "../../../prisma/generated/client/index.js";
 import { isUndefined } from "../core/libs/utils.js";
 import prisma from "../core/libs/prisma.js";
 import { useJWT } from "../../libs/jwt.js";
+import { getListOfferingQuerySchema } from "./offering.schema.js";
 
 const offeringRoute = new Hono().basePath("/offering");
-
-const withOffering = z.enum(["team"]);
-const sortOffering = z.enum(["created_at:asc", "created_at:desc"]);
 
 offeringRoute.get(
   "/list",
   useJWT(),
-  zValidator(
-    "query",
-    z.object({
-      project_id_eq: z.string().optional(),
-      sort: z.union([sortOffering, z.array(sortOffering)]).optional(),
-      with: z.union([withOffering, z.array(withOffering)]).optional(),
-    })
-  ),
+  zValidator("query", getListOfferingQuerySchema),
   async (c) => {
     const query = c.req.valid("query");
 

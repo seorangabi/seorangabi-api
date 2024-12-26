@@ -10,54 +10,6 @@ import { secondsInDay } from "date-fns/constants";
 
 const authRoute = new Hono().basePath("/auth");
 
-// authRoute.post(
-//   "/login",
-//   zValidator(
-//     "json",
-//     z.object({
-//       username: z.string(),
-//       password: z.string(),
-//     })
-//   ),
-//   async (c) => {
-//     const body = c.req.valid("json");
-//     const users = await prisma.user.findMany({
-//       where: {
-//         username: body.username,
-//         password: body.password,
-//       },
-//       select: {
-//         id: true,
-//         username: true,
-//       },
-//     });
-//     const user = users[0];
-
-//     if (!user) {
-//       throw new HTTPException(401, {
-//         message: "User not found",
-//       });
-//     }
-
-//     const accessTokenExpires = Math.floor(Date.now() / 1000) + secondsInDay * 7; // 7 days
-
-//     const payload: JWTPayload = {
-//       id: user?.id,
-//       exp: accessTokenExpires,
-//     };
-
-//     const accessToken = await sign(payload, JWT_SECRET);
-
-//     return c.json({
-//       doc: {
-//         user,
-//         accessToken,
-//         accessTokenExpires,
-//       },
-//     });
-//   }
-// );
-
 authRoute.post(
   "/google/verify",
   zValidator("json", z.object({ email: z.string(), secret: z.string() })),
@@ -70,30 +22,36 @@ authRoute.post(
       });
     }
 
-    const users = await prisma.user.findMany({
-      where: {
-        email: body.email,
-      },
-    });
-    const user = users[0];
-
-    if (!user) {
-      await prisma.user.create({
-        data: {
-          email: body.email,
-          verified: true,
-        },
-      });
-    } else {
-      await prisma.user.updateMany({
+    const { user } = await prisma.$transaction(async (tx) => {
+      const users = await tx.user.findMany({
         where: {
           email: body.email,
         },
-        data: {
-          verified: true,
-        },
       });
-    }
+      const user = users[0];
+
+      if (!user) {
+        await tx.user.create({
+          data: {
+            email: body.email,
+            verified: true,
+          },
+        });
+      } else {
+        await tx.user.updateMany({
+          where: {
+            email: body.email,
+          },
+          data: {
+            verified: true,
+          },
+        });
+      }
+
+      return {
+        user,
+      };
+    });
 
     return c.json({ doc: user });
   }

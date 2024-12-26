@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const withTeam = z.enum(["team"]);
-const sortTeam = z.enum(["created_at:asc", "created_at:desc"]);
+const sort = z.enum(["created_at:asc", "created_at:desc"]);
 
 export const getListProjectJsonSchema = z.object({
   id_eq: z.string().optional(),
@@ -13,7 +13,7 @@ export const getListProjectJsonSchema = z.object({
   skip: z.coerce.number().optional(),
   limit: z.coerce.number().optional(),
   with: z.union([withTeam, z.array(withTeam)]).optional(),
-  sort: z.union([sortTeam, z.array(sortTeam)]).optional(),
+  sort: z.union([sort, z.array(sort)]).optional(),
 });
 
 export const postProjectJsonSchema = z.object({

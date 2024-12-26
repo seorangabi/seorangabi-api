@@ -54,12 +54,12 @@ teamRoute.post(
   ),
   async (c) => {
     const body = c.req.valid("json");
-    const result = await prisma.team.create({
+    const team = await prisma.team.create({
       data: body,
     });
     return c.json({
       data: {
-        doc: result,
+        doc: team,
       },
     });
   }
@@ -67,7 +67,7 @@ teamRoute.post(
 
 teamRoute.delete("/:id", useJWT(), async (c) => {
   const id = c.req.param("id");
-  const result = await prisma.team.update({
+  const team = await prisma.team.update({
     data: {
       deletedAt: new Date(),
     },
@@ -78,7 +78,7 @@ teamRoute.delete("/:id", useJWT(), async (c) => {
 
   return c.json({
     data: {
-      doc: result,
+      doc: team,
     },
   });
 });
@@ -101,7 +101,7 @@ teamRoute.patch(
     const id = c.req.param("id");
     const body = c.req.valid("json");
 
-    const result = await prisma.team.update({
+    const team = await prisma.team.update({
       where: {
         id,
       },
@@ -125,7 +125,7 @@ teamRoute.patch(
 
     return c.json({
       data: {
-        doc: result,
+        doc: team,
       },
     });
   }
