@@ -10,6 +10,8 @@ services:
     depends_on:
       - postgres
       - redis
+    volumes:
+      - /app/seorangabi-api/uploads:/app/uploads
 
   # Postgres
   postgres:
