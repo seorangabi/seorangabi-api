@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { sign } from "hono/utils/jwt/jwt";
-import { JWT_SECRET } from "../../libs/jwt.js";
+import { JWT_SECRET } from "../core/libs/jwt.js";
 import prisma from "../core/libs/prisma.js";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";

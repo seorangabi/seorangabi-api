@@ -1,3 +1,5 @@
+import "./project.worker.js";
+
 import { Hono } from "hono";
 import prisma from "../core/libs/prisma.js";
 import { zValidator } from "@hono/zod-validator";
@@ -10,9 +12,9 @@ import {
 } from "./project.schema.js";
 import { createOfferingAndInteraction } from "../offering/offering.service.js";
 import { getOfferingTeamThreadFromProjectId } from "./project.service.js";
-import { useJWT } from "../../libs/jwt.js";
-// import { createOfferingDeadlineNotification } from "../offering/offering.queue.js";
+import { useJWT } from "../core/libs/jwt.js";
 import { randomUUID } from "node:crypto";
+import { addProjectDeadlineJob } from "./project.queue.js";
 
 const projectRoute = new Hono().basePath("/project");
 
@@ -134,6 +136,7 @@ projectRoute.post(
 
           fee: totalFee,
           imageCount: totalImageCount,
+          confirmationDuration: form.confirmationDuration,
         },
       });
       console.log("Project created:", project.id);
@@ -152,22 +155,17 @@ projectRoute.post(
           fee: totalFee,
           projectId: project.id,
           teamId: form.teamId,
+          confirmationDuration: form.confirmationDuration,
         },
         discordClient,
         project: {
           clientName: form.clientName,
           name: form.name,
           imageRatio: form.imageRatio,
+          confirmationDuration: form.confirmationDuration,
         },
         tasks,
       });
-
-      // console.log("Creating offering deadline notification");
-      // await createOfferingDeadlineNotification({
-      //   offering,
-      //   message: `Mohon dikonfirmasi ya guys <@${team.discordUserId}> \nNotifikasi ini akan dikirimkan setiap 30 menit.`,
-      // });
-      // console.log("Offering deadline notification created");
 
       return { project };
     });

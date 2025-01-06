@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import path from "node:path";
-import { useJWT } from "../../libs/jwt.js";
+import { useJWT } from "../core/libs/jwt.js";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { File } from "node:buffer";

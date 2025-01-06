@@ -17,4 +17,5 @@ export const createOfferingJsonSchema = z.object({
   fee: z.number(),
   note: z.string().nullable().optional(),
   deadline: z.string(),
+  confirmationDuration: z.coerce.number(),
 });

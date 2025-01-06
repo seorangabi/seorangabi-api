@@ -4,7 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { isUndefined } from "../core/libs/utils.js";
 import type { Prisma } from "../../../prisma/generated/client/index.js";
-import { useJWT } from "../../libs/jwt.js";
+import { useJWT } from "../core/libs/jwt.js";
 
 const teamRoute = new Hono().basePath("/team");
 

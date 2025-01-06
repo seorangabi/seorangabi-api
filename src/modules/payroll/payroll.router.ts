@@ -7,7 +7,7 @@ import type {
   Prisma,
   PrismaClient,
 } from "../../../prisma/generated/client/index.js";
-import { useJWT } from "../../libs/jwt.js";
+import { useJWT } from "../core/libs/jwt.js";
 import {
   patchPayrollJsonSchema,
   getListPayrollQuerySchema,

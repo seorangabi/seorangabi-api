@@ -3,11 +3,10 @@ import { Hono } from "hono";
 import { prettyJSON } from "hono/pretty-json";
 import { DiscordAPIError } from "discord.js";
 import { HTTPException } from "hono/http-exception";
-import * as discord from "./libs/discord.js";
+import * as discord from "./modules/core/libs/discord.js";
 import api from "./api.js";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { showRoutes } from "hono/dev";
-import { useJWT } from "./libs/jwt.js";
 
 discord.start();
 

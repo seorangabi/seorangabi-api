@@ -4,7 +4,6 @@ import {
   AttachmentBuilder,
   ChannelType,
   Client,
-  EmbedBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   TextChannel,
@@ -17,7 +16,9 @@ import { formatRupiah } from "../core/libs/utils.js";
 import type { z } from "zod";
 import type { createOfferingJsonSchema } from "./offering.schema.js";
 import { HTTPException } from "hono/http-exception";
-import { createReadStream } from "fs";
+import { addOfferingJob } from "./offering.queue.js";
+import config from "../core/config/index.js";
+import { formatDeadline } from "../../utils/formatter/index.js";
 
 export const createOfferingAndInteraction = async ({
   discordClient,
@@ -36,6 +37,7 @@ export const createOfferingAndInteraction = async ({
     name: string;
     imageRatio: string;
     clientName: string;
+    confirmationDuration: number;
   };
   tasks: {
     fee: number;
@@ -77,10 +79,14 @@ export const createOfferingAndInteraction = async ({
   });
   console.log("Thread created:", thread.id);
 
+  const adminDiscordUserId = await config.getAdminDiscordId();
+
   await thread.members.add(team.discordUserId);
   console.log("Member added:", team.discordUserId);
-  // await thread.members.add("540163649709277245");
-  // console.log("Member added:", "540163649709277245");
+  if (adminDiscordUserId) {
+    await thread.members.add(adminDiscordUserId);
+    console.log("Member added:", adminDiscordUserId);
+  }
 
   console.log("Creating offering:", JSON.stringify(body));
   const offering = await prisma.offering.create({
@@ -89,21 +95,18 @@ export const createOfferingAndInteraction = async ({
       teamId: body.teamId,
       status: "OFFERING",
       discordThreadId: thread.id,
-      confirmationDuration: 30 * 60 * 1000, // 30 menit
+    },
+    include: {
+      team: {
+        select: {
+          discordUserId: true,
+        },
+      },
     },
   });
   console.log("Offering created:", offering.id);
 
-  const deadlineIsSameDay =
-    new Date(body.deadline).setHours(0, 0, 0, 0) ===
-    new Date().setHours(0, 0, 0, 0);
-
-  const deadlineText = deadlineIsSameDay
-    ? format(body.deadline, "HH:mm") // today
-    : `${format(body.deadline, "dd MMMM yyyy")} || _${format(
-        body.deadline,
-        "HH:mm"
-      )}_`; // tomorrow
+  const deadlineText = formatDeadline(body.deadline);
 
   console.log("Sending offering");
   await thread.send({
@@ -133,9 +136,30 @@ CLIENT : ${project.clientName || "N/A"}
     select
   );
 
+  const confirmationDurationText = () => {
+    const now = new Date();
+    const confirmationDate = new Date(
+      now.getTime() + body.confirmationDuration
+    );
+
+    const isSameDay =
+      confirmationDate.getDate() === now.getDate() &&
+      confirmationDate.getMonth() === now.getMonth() &&
+      confirmationDate.getFullYear() === now.getFullYear();
+
+    if (isSameDay) return format(confirmationDate, "HH:mm");
+
+    return `${format(confirmationDate, "dd MMMM yyyy")} || _${format(
+      confirmationDate,
+      "HH:mm"
+    )}_`;
+  };
+
   console.log("Sending message");
   await thread.send({
-    content: `Ready cuy <@${team?.discordUserId}> ? \nwaktu konfirmasi mu sampai jam 11:00 yaaa 👀`,
+    content: `Ready cuy <@${
+      team?.discordUserId
+    }> ? \nwaktu konfirmasi mu sampai ${confirmationDurationText()} yaaa 👀`,
     components: [row],
   });
   console.log("Message sent");
@@ -151,6 +175,11 @@ CLIENT : ${project.clientName || "N/A"}
       files: [attachment],
     });
   }
+
+  await addOfferingJob({
+    offering,
+    confirmationDuration: project.confirmationDuration,
+  });
 
   return {
     offeringId: offering.id,

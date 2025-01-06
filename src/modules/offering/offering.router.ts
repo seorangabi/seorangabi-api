@@ -1,10 +1,11 @@
+import "./offering.worker.js";
+
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { z } from "zod";
 import type { Prisma } from "../../../prisma/generated/client/index.js";
 import { isUndefined } from "../core/libs/utils.js";
 import prisma from "../core/libs/prisma.js";
-import { useJWT } from "../../libs/jwt.js";
+import { useJWT } from "../core/libs/jwt.js";
 import { getListOfferingQuerySchema } from "./offering.schema.js";
 
 const offeringRoute = new Hono().basePath("/offering");

@@ -39,6 +39,8 @@ model Project {
   isPaid    Boolean @default(false)
   payrollId String?
 
+  confirmationDuration Int @default(0) // millisecond
+
   offering Offering[]
 
   payroll Payroll? @relation(fields: [payrollId], references: [id])
@@ -72,8 +74,6 @@ model Offering {
   teamId          String
   status          OfferingStatus @default(OFFERING)
   discordThreadId String
-
-  confirmationDuration Int @default(0) // millisecond
 
   team      Team     @relation(fields: [teamId], references: [id])
   project   Project  @relation(fields: [projectId], references: [id])

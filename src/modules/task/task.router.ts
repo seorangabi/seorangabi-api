@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { isUndefined } from "../core/libs/utils.js";
 import { z } from "zod";
-import { useJWT } from "../../libs/jwt.js";
+import { useJWT } from "../core/libs/jwt.js";
 import { zValidator } from "@hono/zod-validator";
 import type { Prisma } from "../../../prisma/generated/client/index.js";
 import prisma from "../core/libs/prisma.js";

@@ -30,6 +30,7 @@ export const postProjectJsonSchema = z.object({
       attachmentUrl: z.string(),
     })
   ),
+  confirmationDuration: z.number(),
 });
 
 export const patchProjectJsonSchema = z.object({

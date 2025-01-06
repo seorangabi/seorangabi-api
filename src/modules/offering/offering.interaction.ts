@@ -7,6 +7,9 @@ import {
 } from "discord.js";
 import prisma from "../core/libs/prisma.js";
 import { createOfferingAndInteraction } from "./offering.service.js";
+import { addProjectDeadlineJob } from "../project/project.queue.js";
+import { format } from "date-fns";
+import { formatDeadline } from "../../utils/formatter/index.js";
 
 export const offeringInteraction = async ({
   interaction,
@@ -105,7 +108,7 @@ export const offeringInteraction = async ({
         `Updating status to in progress for project id:`,
         offering.projectId
       );
-      await trx.project.update({
+      const project = await trx.project.update({
         where: {
           id: offering.projectId,
         },
@@ -113,16 +116,23 @@ export const offeringInteraction = async ({
           status: "IN_PROGRESS",
         },
       });
+
+      interaction.message.edit({
+        components: [],
+      });
+      console.log(`Delete components for offering ${offeringId}`);
+
+      interaction.reply({
+        content: `Here we go 🚀 \nJangan lupa deadline mu sampai ${formatDeadline(
+          project.deadline.toISOString()
+        )}`,
+      });
+
+      await addProjectDeadlineJob({
+        project,
+      });
     });
 
-    interaction.message.edit({
-      components: [],
-    });
-    console.log(`Delete components for offering ${offeringId}`);
-
-    interaction.reply({
-      content: `Here we go 🚀 \nJangan lupa deadline mu sampai 8:40 WIB`,
-    });
     return;
   }
 
@@ -180,11 +190,13 @@ export const chooseTeamInteraction = async ({
         teamId: teamId,
         deadline: project.deadline.toISOString(),
         fee: project.fee,
+        confirmationDuration: project.confirmationDuration,
       },
       project: {
         name: project.name,
         imageRatio: project.imageRatio,
         clientName: project.clientName,
+        confirmationDuration: project.confirmationDuration,
       },
       tasks: tasks,
     });

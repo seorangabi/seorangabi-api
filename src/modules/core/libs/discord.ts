@@ -6,7 +6,7 @@ import {
 import {
   chooseTeamInteraction,
   offeringInteraction,
-} from "../modules/offering/offering.interaction.js";
+} from "../../offering/offering.interaction.js";
 import { Hono } from "hono";
 import { env } from "hono/adapter";
 

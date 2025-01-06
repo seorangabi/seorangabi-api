@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import prisma from "../core/libs/prisma.js";
 import { add, addDays, endOfDay, format, startOfDay } from "date-fns";
-import { useJWT } from "../../libs/jwt.js";
+import { useJWT } from "../core/libs/jwt.js";
 
 const statisticRoute = new Hono().basePath("/statistic");
 
