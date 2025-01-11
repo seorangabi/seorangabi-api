@@ -1,0 +1,12 @@
+services:
+  postgres:
+    extends:
+      file: services.yml
+      service: postgres
+    env_file:
+      - .env.local
+
+  redis:
+    extends:
+      file: services.yml
+      service: redis
