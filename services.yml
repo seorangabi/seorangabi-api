@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: hono
     ports:
       - "3020:3020"
     volumes:

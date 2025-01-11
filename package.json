@@ -5,6 +5,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "prestart": "env TZ='Asia/Jakarta'",
     "start:prod": "prisma migrate deploy && yarn run start"
   },
   "dependencies": {

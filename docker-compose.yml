@@ -28,6 +28,8 @@ services:
       - redis
     networks:
       - default
+    environment:
+      - TZ=Asia/Jakarta
 
 volumes:
   pg_data:
