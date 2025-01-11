@@ -79,7 +79,7 @@ export const offeringWorker = new Worker(
     };
 
     if (minutes === 0) {
-      const adminDiscordUserId = config.getAdminDiscordId();
+      const adminDiscordUserId = await config.getAdminDiscordId();
       const message = `Deadline konfirmasi sudah berakhir <@${offering.team.discordUserId}>. \ncc  <@${adminDiscordUserId}>`;
       await thread.send({
         content: message,
