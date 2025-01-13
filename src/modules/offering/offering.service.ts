@@ -75,7 +75,7 @@ export const createOfferingAndInteraction = async ({
   console.log("Creating thread:", project.name);
   const thread = await channel.threads.create({
     name: `${project.name}`,
-    type: ChannelType.PrivateThread,
+    type: ChannelType.PublicThread,
   });
   console.log("Thread created:", thread.id);
 

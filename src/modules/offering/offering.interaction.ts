@@ -3,6 +3,7 @@ import {
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   TextChannel,
+  ThreadChannel,
   type StringSelectMenuInteraction,
 } from "discord.js";
 import prisma from "../core/libs/prisma.js";
@@ -51,16 +52,15 @@ export const offeringInteraction = async ({
       },
     });
 
-    if (offering.team?.discordUserId) {
-      // remove member from thread
-      const thread = await interaction.channel?.fetch();
-      if (thread instanceof TextChannel) {
-        thread?.members.delete(offering.team?.discordUserId);
-        console.log(
-          `Remove member ${offering.team?.discordUserId} from thread ${interaction.channel?.id}`
-        );
-      }
+    // remove member from thread
+    const channel = await interaction.channel?.fetch();
+    if (channel instanceof TextChannel) {
+      channel?.members.delete(offering.team?.discordUserId);
+      console.log(
+        `Remove member ${offering.team?.discordUserId} from thread ${interaction.channel?.id}`
+      );
     }
+
     const teams = await prisma.team.findMany({});
     const options = teams.map((team) => {
       return new StringSelectMenuOptionBuilder()
@@ -101,6 +101,7 @@ export const offeringInteraction = async ({
         select: {
           id: true,
           projectId: true,
+          discordThreadId: true,
         },
       });
 
@@ -127,6 +128,14 @@ export const offeringInteraction = async ({
           project.deadline.toISOString()
         )}`,
       });
+
+      const channel = await interaction.channel?.fetch();
+      if (!(channel instanceof ThreadChannel)) return;
+
+      const message = await channel.fetchStarterMessage();
+      if (!message) return;
+
+      await message.react("💰");
 
       await addProjectDeadlineJob({
         project,
