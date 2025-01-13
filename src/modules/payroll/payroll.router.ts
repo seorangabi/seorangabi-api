@@ -14,6 +14,7 @@ import {
   postPayrollJsonSchema,
   deletePayrollParamSchema,
 } from "./payroll.schema.js";
+import { TextChannel, ThreadChannel, type Client } from "discord.js";
 
 const payrollRoute = new Hono().basePath("/payroll");
 
@@ -21,6 +22,7 @@ const onStatusChange = async ({
   prisma,
   newStatus,
   projectIds,
+  discordClient,
 }: {
   prisma: Omit<
     PrismaClient<Prisma.PrismaClientOptions>,
@@ -28,6 +30,7 @@ const onStatusChange = async ({
   >;
   newStatus: "DRAFT" | "PAID";
   projectIds: string[];
+  discordClient: Client;
 }) => {
   if (newStatus === "PAID") {
     await prisma.project.updateMany({
@@ -41,6 +44,38 @@ const onStatusChange = async ({
         isPaid: true,
       },
     });
+
+    const offering = await prisma.offering.findMany({
+      where: {
+        projectId: {
+          in: projectIds,
+        },
+        status: "ACCEPTED",
+      },
+      select: {
+        discordThreadId: true,
+        team: {
+          select: {
+            discordChannelId: true,
+          },
+        },
+      },
+    });
+
+    for (const offer of offering) {
+      const channel = await discordClient.channels.fetch(
+        offer.team.discordChannelId
+      );
+      if (!(channel instanceof TextChannel)) continue;
+
+      const thread = await channel.threads.fetch(offer.discordThreadId);
+      if (!(thread instanceof ThreadChannel)) return;
+
+      const message = await thread.fetchStarterMessage();
+      if (!message) return;
+
+      message.react("✅");
+    }
   }
 };
 
@@ -160,6 +195,7 @@ payrollRoute.post(
         prisma: trx,
         newStatus: body.status,
         projectIds: body.projectIds,
+        discordClient: c.get("discordClient"),
       });
 
       return { payroll };
@@ -243,6 +279,7 @@ payrollRoute.patch(
           prisma: trx,
           newStatus: body.status,
           projectIds: projectIds.map((project) => project.id),
+          discordClient: c.get("discordClient"),
         });
       }
     });

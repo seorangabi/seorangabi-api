@@ -9,7 +9,6 @@ import {
 import prisma from "../core/libs/prisma.js";
 import { createOfferingAndInteraction } from "./offering.service.js";
 import { addProjectDeadlineJob } from "../project/project.queue.js";
-import { format } from "date-fns";
 import { formatDeadline } from "../../utils/formatter/index.js";
 
 export const offeringInteraction = async ({
@@ -155,7 +154,7 @@ export const chooseTeamInteraction = async ({
     },
   });
 
-  const { offering } = await prisma.$transaction(async (trx) => {
+  await prisma.$transaction(async (trx) => {
     await trx.project.update({
       where: {
         id: projectId,
