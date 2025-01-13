@@ -4,7 +4,7 @@ services:
       file: services.yml
       service: postgres
     env_file:
-      - .env
+      - .env.production
     networks:
       - default
     volumes:
@@ -22,7 +22,7 @@ services:
       file: services.yml
       service: hono-app
     env_file:
-      - .env
+      - .env.production
     depends_on:
       - postgres
       - redis

@@ -14,7 +14,6 @@ import { createOfferingAndInteraction } from "../offering/offering.service.js";
 import { getOfferingTeamThreadFromProjectId } from "./project.service.js";
 import { useJWT } from "../core/libs/jwt.js";
 import { randomUUID } from "node:crypto";
-import { addProjectDeadlineJob } from "./project.queue.js";
 
 const projectRoute = new Hono().basePath("/project");
 

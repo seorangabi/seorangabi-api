@@ -4,7 +4,7 @@ services:
       file: services.yml
       service: postgres
     env_file:
-      - .env.local
+      - .env
 
   redis:
     extends:
