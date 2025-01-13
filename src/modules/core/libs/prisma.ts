@@ -1,13 +1,14 @@
-import { PrismaClient } from "../../../../prisma/generated/client/index.js";
+import {
+  Prisma,
+  PrismaClient,
+} from "../../../../prisma/generated/client/index.js";
 
 const prisma = new PrismaClient({
-  //   log: ["query", "info", "warn", "error"],
+  transactionOptions: {
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    maxWait: parseInt(process.env.PRISMA_TRANSACTION_MAX_WAIT || "2000"),
+    timeout: parseInt(process.env.PRISMA_TRANSACTION_MAX_WAIT || "5000"),
+  },
 });
-
-// prisma.$on("query", (e) => {
-//   console.log("Query: " + e.query);
-//   console.log("Params: " + e.params);
-//   console.log("Duration: " + e.duration + "ms");
-// });
 
 export default prisma;
