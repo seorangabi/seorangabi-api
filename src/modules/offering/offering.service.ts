@@ -45,7 +45,6 @@ export const createOfferingAndInteraction = async ({
     attachmentUrl: string;
   }[];
 }) => {
-  console.log("Fetching team:", body.teamId);
   const team = await prisma.team.findUniqueOrThrow({
     where: {
       id: body.teamId,
@@ -56,39 +55,25 @@ export const createOfferingAndInteraction = async ({
       discordChannelId: true,
     },
   });
-  console.log("Team fetched:", team?.id);
   if (!team.discordChannelId)
     throw new HTTPException(404, { message: "Discord channel id is empty" });
   if (!team.discordUserId)
     throw new HTTPException(404, { message: "Discord user id is empty" });
 
-  console.log("Fetching user:", team.discordUserId);
-  const discordUser = await discordClient.users.fetch(team.discordUserId);
-  console.log("Discord user fetched:", discordUser?.id);
-
-  console.log("Fetching channel:", team.discordChannelId);
   const channel = await discordClient.channels.fetch(team.discordChannelId);
-  console.log("Channel fetched:", channel?.id);
 
   if (!(channel instanceof TextChannel)) throw new Error("Channel not found");
 
-  console.log("Creating thread:", project.name);
   const thread = await channel.threads.create({
     name: `${project.name}`,
     type: ChannelType.PublicThread,
   });
-  console.log("Thread created:", thread.id);
 
   const adminDiscordUserId = await config.getAdminDiscordId();
 
   await thread.members.add(team.discordUserId);
-  console.log("Member added:", team.discordUserId);
-  if (adminDiscordUserId) {
-    await thread.members.add(adminDiscordUserId);
-    console.log("Member added:", adminDiscordUserId);
-  }
+  if (adminDiscordUserId) await thread.members.add(adminDiscordUserId);
 
-  console.log("Creating offering:", JSON.stringify(body));
   const offering = await prisma.offering.create({
     data: {
       projectId: body.projectId,
@@ -104,11 +89,9 @@ export const createOfferingAndInteraction = async ({
       },
     },
   });
-  console.log("Offering created:", offering.id);
 
   const deadlineText = formatDeadline(body.deadline);
 
-  console.log("Sending offering");
   await thread.send({
     content: `
 🌟 NEW PROJECT 🌟
@@ -118,7 +101,6 @@ RATIO : ${project.imageRatio || "N/A"}
 CLIENT : ${project.clientName || "N/A"}
     `,
   });
-  console.log("Offering sent");
 
   const select = new StringSelectMenuBuilder()
     .setCustomId(`offering/${offering.id}`)
@@ -155,14 +137,12 @@ CLIENT : ${project.clientName || "N/A"}
     )}_`;
   };
 
-  console.log("Sending message");
   await thread.send({
     content: `Ready cuy <@${
       team?.discordUserId
     }> ? \nwaktu konfirmasi mu sampai ${confirmationDurationText()} yaaa 👀`,
     components: [row],
   });
-  console.log("Message sent");
 
   for (const task of tasks) {
     const name = task.attachmentUrl.split("/").pop();

@@ -26,10 +26,6 @@ uploadRouter.post(
 
     const extension = file.name.split(".").pop();
 
-    console.log({
-      form,
-    });
-
     const generateName = () => {
       switch (form.forFeature) {
         case "task":

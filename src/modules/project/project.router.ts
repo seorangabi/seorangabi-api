@@ -123,7 +123,6 @@ projectRoute.post(
         }
       );
 
-      console.log("Creating project:", JSON.stringify(form));
       const project = await trx.project.create({
         data: {
           id: projectId,
@@ -138,16 +137,14 @@ projectRoute.post(
           confirmationDuration: form.confirmationDuration,
         },
       });
-      console.log("Project created:", project.id);
 
-      // sort tasks by created_at
-      const tasksResult = await trx.task.createMany({
+      await trx.task.createMany({
         data: tasks,
       });
 
       const discordClient = c.get("discordClient");
 
-      const { offering, team } = await createOfferingAndInteraction({
+      await createOfferingAndInteraction({
         prisma: trx,
         body: {
           deadline: form.deadline,
@@ -168,6 +165,7 @@ projectRoute.post(
 
       return { project };
     });
+
     return c.json({
       data: {
         doc: project,
@@ -203,12 +201,6 @@ projectRoute.patch(
     const body = c.req.valid("json");
 
     const { project } = await prisma.$transaction(async (trx) => {
-      console.log(
-        "Updating project",
-        JSON.stringify({
-          id,
-        })
-      );
       const project = await trx.project.update({
         where: {
           id,
@@ -262,15 +254,6 @@ projectRoute.patch(
         });
       }
 
-      if (project.teamId) {
-        console.log(
-          "Updating Offering",
-          JSON.stringify({
-            teamId: project.teamId,
-            projectId: id,
-          })
-        );
-      }
       return { project };
     });
 

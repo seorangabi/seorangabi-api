@@ -26,7 +26,6 @@ export const offeringInteraction = async ({
     interaction.message.edit({
       components: [],
     });
-    console.log(`Delete components for offering ${offeringId}`);
 
     await prisma.offering.update({
       data: {
@@ -36,7 +35,6 @@ export const offeringInteraction = async ({
         id: offeringId,
       },
     });
-    console.log(`Update offering status ${offeringId} to rejected`);
 
     const offering = await prisma.offering.findUniqueOrThrow({
       where: {
@@ -56,9 +54,6 @@ export const offeringInteraction = async ({
     const channel = await interaction.channel?.fetch();
     if (channel instanceof TextChannel) {
       channel?.members.delete(offering.team?.discordUserId);
-      console.log(
-        `Remove member ${offering.team?.discordUserId} from thread ${interaction.channel?.id}`
-      );
     }
 
     const teams = await prisma.team.findMany({});
@@ -80,17 +75,12 @@ export const offeringInteraction = async ({
       content: `Kamu mau offer ke siapa nih ? \nJika mau ubah offering lewat dashboard yaaa`,
       components: [row],
     });
-    console.log("Reply choose team for offering", offeringId);
 
     return;
   }
 
   if (option === "yes") {
     prisma.$transaction(async (trx) => {
-      console.log(
-        `Updating status to in progress for offering id:`,
-        offeringId
-      );
       const offering = await trx.offering.update({
         where: {
           id: offeringId,
@@ -105,10 +95,6 @@ export const offeringInteraction = async ({
         },
       });
 
-      console.log(
-        `Updating status to in progress for project id:`,
-        offering.projectId
-      );
       const project = await trx.project.update({
         where: {
           id: offering.projectId,
@@ -121,7 +107,6 @@ export const offeringInteraction = async ({
       interaction.message.edit({
         components: [],
       });
-      console.log(`Delete components for offering ${offeringId}`);
 
       interaction.reply({
         content: `Here we go 🚀 \nJangan lupa deadline mu sampai ${formatDeadline(
@@ -144,8 +129,6 @@ export const offeringInteraction = async ({
 
     return;
   }
-
-  console.log("Invalid option selected");
 };
 
 export const chooseTeamInteraction = async ({
@@ -158,7 +141,6 @@ export const chooseTeamInteraction = async ({
   // option selected
   const teamId = interaction.values[0];
 
-  console.log("get project:", projectId);
   const project = await prisma.project.findUniqueOrThrow({
     where: {
       id: projectId,
@@ -174,13 +156,6 @@ export const chooseTeamInteraction = async ({
   });
 
   const { offering } = await prisma.$transaction(async (trx) => {
-    console.log(
-      "updating teamId for project:",
-      JSON.stringify({
-        projectId,
-        teamId,
-      })
-    );
     await trx.project.update({
       where: {
         id: projectId,
@@ -189,7 +164,6 @@ export const chooseTeamInteraction = async ({
         teamId: teamId,
       },
     });
-    console.log("teamId updated for project:", projectId);
 
     const { offering } = await createOfferingAndInteraction({
       discordClient: interaction.client,
@@ -210,14 +184,8 @@ export const chooseTeamInteraction = async ({
       tasks: tasks,
     });
 
-    await interaction.channel?.delete().catch(() => {
-      console.log("Failed to delete channel");
-    });
+    await interaction.channel?.delete().catch(() => {});
 
     return { offering };
   });
-
-  console.log(
-    `Delete channel ${interaction.channel?.id} for offering ${offering.id}`
-  );
 };
