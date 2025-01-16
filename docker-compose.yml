@@ -30,6 +30,7 @@ services:
       - default
     environment:
       - TZ=Asia/Jakarta
+    restart: always
 
 volumes:
   pg_data:
