@@ -10,23 +10,23 @@ import { getListOffering } from "./offering.service.js";
 const offeringRoute = new Hono().basePath("/offering");
 
 offeringRoute.get(
-  "/list",
-  useJWT(),
-  zValidator("query", getListOfferingQuerySchema),
-  async (c) => {
-    const query = c.req.valid("query");
+	"/list",
+	useJWT(),
+	zValidator("query", getListOfferingQuerySchema),
+	async (c) => {
+		const query = c.req.valid("query");
 
-    const { result } = await getListOffering({
-      query,
-      prisma,
-    });
+		const { result } = await getListOffering({
+			query,
+			prisma,
+		});
 
-    return c.json({
-      data: {
-        docs: result,
-      },
-    });
-  }
+		return c.json({
+			data: {
+				docs: result,
+			},
+		});
+	},
 );
 
 export default offeringRoute;

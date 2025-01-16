@@ -13,13 +13,13 @@ import uploadRouter from "./modules/upload/upload.router.js";
 const api = new Hono();
 
 api.use(
-  "*",
-  cors({
-    origin: ["https://studio.seorangabi.com", "http://localhost:3000"],
-    allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
-    maxAge: 86400,
-  })
+	"*",
+	cors({
+		origin: ["https://studio.seorangabi.com", "http://localhost:3000"],
+		allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+		allowHeaders: ["Content-Type", "Authorization"],
+		maxAge: 86400,
+	}),
 );
 api.use(logger());
 

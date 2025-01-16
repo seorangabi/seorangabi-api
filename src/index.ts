@@ -13,19 +13,19 @@ discord.start();
 const app = new Hono();
 
 app.use(
-  "/uploads/*",
-  serveStatic({
-    root: "./",
-    onNotFound: (path, c) => {
-      console.log(`${path} is not found, you access ${c.req.path}`);
-    },
-  })
+	"/uploads/*",
+	serveStatic({
+		root: "./",
+		onNotFound: (path, c) => {
+			console.log(`${path} is not found, you access ${c.req.path}`);
+		},
+	}),
 );
 
 // Middleware to inject Discord client into context
 app.use("*", async (c, next) => {
-  c.set("discordClient", discord.discordClient); // Attach Discord client to context
-  await next();
+	c.set("discordClient", discord.discordClient); // Attach Discord client to context
+	await next();
 });
 
 app.get("/", (c) => c.text("API Seorangabi"));
@@ -37,32 +37,32 @@ app.route("/", discord.Route);
 app.route("/v1", api);
 
 showRoutes(app, {
-  colorize: true,
-  // verbose: true,
+	colorize: true,
+	// verbose: true,
 });
 
 // @ts-ignore
 app.onError((err) => {
-  console.log(err);
-  if (err instanceof HTTPException) return err.getResponse();
+	console.log(err);
+	if (err instanceof HTTPException) return err.getResponse();
 
-  if (err instanceof DiscordAPIError) {
-    return new Response(`Discord Error: ${err.message}`, {
-      status: 500,
-    });
-  }
+	if (err instanceof DiscordAPIError) {
+		return new Response(`Discord Error: ${err.message}`, {
+			status: 500,
+		});
+	}
 
-  if (err instanceof Error) {
-    return new Response(err.message, {
-      status: 500,
-    });
-  }
+	if (err instanceof Error) {
+		return new Response(err.message, {
+			status: 500,
+		});
+	}
 });
 
 const port = 3020;
 console.log(`Server is running on http://localhost:${port}`);
 
 serve({
-  fetch: app.fetch,
-  port,
+	fetch: app.fetch,
+	port,
 });
