@@ -12,13 +12,58 @@ import type {
   Prisma,
   PrismaClient,
 } from "../../../prisma/generated/client/index.js";
-import { formatRupiah } from "../core/libs/utils.js";
+import { formatRupiah, isUndefined } from "../core/libs/utils.js";
 import type { z } from "zod";
-import type { createOfferingJsonSchema } from "./offering.schema.js";
+import type {
+  createOfferingJsonSchema,
+  getListOfferingQuerySchema,
+} from "./offering.schema.js";
 import { HTTPException } from "hono/http-exception";
 import { addOfferingJob } from "./offering.queue.js";
 import config from "../core/config/index.js";
 import { formatDeadline } from "../../utils/formatter/index.js";
+
+export const getListOffering = async ({
+  query,
+  prisma,
+}: {
+  query: z.infer<typeof getListOfferingQuerySchema>;
+  prisma: PrismaClient;
+}) => {
+  const include: Prisma.OfferingInclude = {};
+  if (!isUndefined(query.with)) {
+    const withArray = Array.isArray(query.with) ? query.with : [query.with];
+
+    if (withArray.includes("team")) include.team = true;
+  }
+
+  const orderBy: Prisma.OfferingOrderByWithRelationInput = {};
+  if (!isUndefined(query.sort)) {
+    const sortArray = Array.isArray(query.sort) ? query.sort : [query.sort];
+
+    if (sortArray.includes("created_at:asc")) {
+      orderBy.createdAt = "asc";
+    }
+    if (sortArray.includes("created_at:desc")) {
+      orderBy.createdAt = "desc";
+    }
+  }
+
+  const where: Prisma.OfferingWhereInput = {};
+  if (!isUndefined(query.project_id_eq)) {
+    where.projectId = query.project_id_eq;
+  }
+
+  const result = await prisma.offering.findMany({
+    include,
+    where,
+    orderBy,
+  });
+
+  return {
+    result,
+  };
+};
 
 const confirmationDurationText = (confirmationDuration: number) => {
   const now = new Date();
