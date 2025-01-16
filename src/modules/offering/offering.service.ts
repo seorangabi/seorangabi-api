@@ -20,6 +20,23 @@ import { addOfferingJob } from "./offering.queue.js";
 import config from "../core/config/index.js";
 import { formatDeadline } from "../../utils/formatter/index.js";
 
+const confirmationDurationText = (confirmationDuration: number) => {
+  const now = new Date();
+  const confirmationDate = new Date(now.getTime() + confirmationDuration);
+
+  const isSameDay =
+    confirmationDate.getDate() === now.getDate() &&
+    confirmationDate.getMonth() === now.getMonth() &&
+    confirmationDate.getFullYear() === now.getFullYear();
+
+  if (isSameDay) return format(confirmationDate, "HH:mm");
+
+  return `${format(confirmationDate, "dd MMMM yyyy")} || _${format(
+    confirmationDate,
+    "HH:mm"
+  )}_`;
+};
+
 export const createOfferingAndInteraction = async ({
   discordClient,
   prisma,
@@ -35,6 +52,7 @@ export const createOfferingAndInteraction = async ({
   body: z.infer<typeof createOfferingJsonSchema>;
   project: {
     name: string;
+    note: string;
     imageRatio: string;
     clientName: string;
     confirmationDuration: number;
@@ -102,6 +120,12 @@ CLIENT : ${project.clientName || "N/A"}
     `,
   });
 
+  if (project.note) {
+    await thread.send({
+      content: project.note,
+    });
+  }
+
   const select = new StringSelectMenuBuilder()
     .setCustomId(`offering/${offering.id}`)
     .setPlaceholder("Select an option")
@@ -118,29 +142,12 @@ CLIENT : ${project.clientName || "N/A"}
     select
   );
 
-  const confirmationDurationText = () => {
-    const now = new Date();
-    const confirmationDate = new Date(
-      now.getTime() + body.confirmationDuration
-    );
-
-    const isSameDay =
-      confirmationDate.getDate() === now.getDate() &&
-      confirmationDate.getMonth() === now.getMonth() &&
-      confirmationDate.getFullYear() === now.getFullYear();
-
-    if (isSameDay) return format(confirmationDate, "HH:mm");
-
-    return `${format(confirmationDate, "dd MMMM yyyy")} || _${format(
-      confirmationDate,
-      "HH:mm"
-    )}_`;
-  };
-
   await thread.send({
     content: `Ready cuy <@${
       team?.discordUserId
-    }> ? \nwaktu konfirmasi mu sampai ${confirmationDurationText()} yaaa 👀`,
+    }> ? \nwaktu konfirmasi mu sampai ${confirmationDurationText(
+      body.confirmationDuration
+    )} yaaa 👀`,
     components: [row],
   });
 

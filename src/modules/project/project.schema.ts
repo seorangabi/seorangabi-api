@@ -31,6 +31,7 @@ export const postProjectJsonSchema = z.object({
     })
   ),
   confirmationDuration: z.number(),
+  note: z.string().nullable(),
 });
 
 export const patchProjectJsonSchema = z.object({

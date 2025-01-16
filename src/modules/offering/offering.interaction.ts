@@ -179,6 +179,7 @@ export const chooseTeamInteraction = async ({
         imageRatio: project.imageRatio,
         clientName: project.clientName,
         confirmationDuration: project.confirmationDuration,
+        note: project.note || "",
       },
       tasks: tasks,
     });

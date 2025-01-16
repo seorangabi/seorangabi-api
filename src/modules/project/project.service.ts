@@ -1,10 +1,230 @@
-import { TextChannel, type Client, type TextThreadChannel } from "discord.js";
+import { TextChannel, type Client } from "discord.js";
 import type {
   OfferingStatus,
   Prisma,
   PrismaClient,
 } from "../../../prisma/generated/client/index.js";
 import { HTTPException } from "hono/http-exception";
+import { randomUUID } from "node:crypto";
+import type { z } from "zod";
+import type {
+  getListProjectJsonSchema,
+  patchProjectJsonSchema,
+  postProjectJsonSchema,
+} from "./project.schema.js";
+import { createOfferingAndInteraction } from "../offering/offering.service.js";
+import { isUndefined } from "../core/libs/utils.js";
+
+export const createProject = async ({
+  form,
+  prisma,
+  discordClient,
+}: {
+  prisma: PrismaClient;
+  form: z.infer<typeof postProjectJsonSchema>;
+  discordClient: Client;
+}) => {
+  const { project } = await prisma.$transaction(async (trx) => {
+    const projectId = randomUUID();
+
+    const { tasks, totalFee, totalImageCount } = form.tasks.reduce(
+      (acc, task) => {
+        const temp: Prisma.TaskCreateManyInput = {
+          projectId,
+          fee: task.fee,
+          imageCount: task.imageCount,
+          note: task.note || "",
+          attachmentUrl: task.attachmentUrl,
+        };
+
+        return {
+          tasks: [...acc.tasks, temp],
+          totalFee: acc.totalFee + task.fee,
+          totalImageCount: acc.totalImageCount + task.imageCount,
+        };
+      },
+      {
+        tasks: [],
+        totalFee: 0,
+        totalImageCount: 0,
+      } as {
+        tasks: Prisma.TaskCreateManyInput[];
+        totalFee: number;
+        totalImageCount: number;
+      }
+    );
+
+    const project = await trx.project.create({
+      data: {
+        id: projectId,
+        name: form.name,
+        imageRatio: form.imageRatio,
+        teamId: form.teamId,
+        clientName: form.clientName,
+        deadline: form.deadline,
+        note: form.note || "",
+
+        fee: totalFee,
+        imageCount: totalImageCount,
+        confirmationDuration: form.confirmationDuration,
+      },
+    });
+
+    await trx.task.createMany({
+      data: tasks,
+    });
+
+    await createOfferingAndInteraction({
+      prisma: trx,
+      body: {
+        deadline: form.deadline,
+        fee: totalFee,
+        projectId: project.id,
+        teamId: form.teamId,
+        confirmationDuration: form.confirmationDuration,
+      },
+      discordClient,
+      project: {
+        clientName: form.clientName,
+        name: form.name,
+        imageRatio: form.imageRatio,
+        confirmationDuration: form.confirmationDuration,
+        note: form.note || "",
+      },
+      tasks,
+    });
+
+    return { project };
+  });
+
+  return { project };
+};
+
+export const getListProject = async ({
+  query,
+  prisma,
+}: {
+  query: z.infer<typeof getListProjectJsonSchema>;
+  prisma: PrismaClient;
+}) => {
+  const include: Prisma.ProjectInclude = {};
+  if (!isUndefined(query.with)) {
+    const withArray = Array.isArray(query.with) ? query.with : [query.with];
+
+    if (withArray.includes("team")) include.team = true;
+  }
+
+  const orderBy: Prisma.ProjectOrderByWithRelationInput = {};
+  if (!isUndefined(query.sort)) {
+    const sortArray = Array.isArray(query.sort) ? query.sort : [query.sort];
+
+    if (sortArray.includes("created_at:asc")) {
+      orderBy.createdAt = "asc";
+    }
+    if (sortArray.includes("created_at:desc")) {
+      orderBy.createdAt = "desc";
+    }
+  }
+
+  const where: Prisma.ProjectWhereInput = {
+    deletedAt: null, // filter for soft delete
+  };
+  if (!isUndefined(query.id_eq)) {
+    where.id = query.id_eq;
+  }
+  if (!isUndefined(query.team_id_eq)) {
+    where.teamId = query.team_id_eq;
+  }
+  if (!isUndefined(query.status_eq)) {
+    where.status = query.status_eq;
+  }
+  if (query.is_paid_eq === "true") where.isPaid = true;
+  if (query.is_paid_eq === "false") where.isPaid = false;
+
+  const result = await prisma.project.findMany({
+    include,
+    where,
+    orderBy,
+    ...(!isUndefined(query.skip) && { skip: query.skip }),
+    ...(!isUndefined(query.limit) && { take: query.limit + 1 }),
+  });
+
+  let hasNext = false;
+  if (query.limit && result.length > query.limit) {
+    result.pop();
+    hasNext = true;
+  }
+
+  const hasPrev = !isUndefined(query.skip) && query.skip > 0;
+
+  return {
+    result,
+    hasNext,
+    hasPrev,
+  };
+};
+
+export const updateProject = async ({
+  id,
+  body,
+  prisma,
+  discordClient,
+}: {
+  id: string;
+  body: z.infer<typeof patchProjectJsonSchema>;
+  prisma: PrismaClient;
+  discordClient: Client;
+}) => {
+  const { project } = await prisma.$transaction(async (trx) => {
+    const project = await trx.project.update({
+      where: {
+        id,
+      },
+      data: {
+        name: isUndefined(body.name) ? undefined : body.name,
+        imageRatio: isUndefined(body.imageRatio) ? undefined : body.imageRatio,
+        status: isUndefined(body.status) ? undefined : body.status,
+        teamId: isUndefined(body.teamId) ? undefined : body.teamId,
+        imageCount: isUndefined(body.imageCount) ? undefined : body.imageCount,
+        clientName: isUndefined(body.clientName) ? undefined : body.clientName,
+        doneAt: body.status === "DONE" ? new Date().toISOString() : undefined,
+        note: isUndefined(body.note) ? undefined : body.note,
+
+        // Offering
+        fee: isUndefined(body.fee) ? undefined : body.fee,
+        deadline: isUndefined(body.deadline) ? undefined : body.deadline,
+      },
+    });
+
+    if (body.status === "DONE") {
+      const { thread, team } = await getOfferingTeamThreadFromProjectId({
+        prisma: trx,
+        discordClient,
+        projectId: id,
+      });
+
+      await thread.send({
+        content: `Thx guys <@${team.discordUserId}> project selesai 🔥🔥🔥`,
+      });
+    }
+
+    if (body.status === "CANCELLED") {
+      const { thread, team } = await getOfferingTeamThreadFromProjectId({
+        prisma: trx,
+        discordClient,
+        projectId: id,
+      });
+
+      await thread.send({
+        content: `Sorry guys <@${team.discordUserId}> project dibatalkan ❌`,
+      });
+    }
+
+    return { project };
+  });
+
+  return { project };
+};
 
 export const getOfferingTeamThreadFromProjectId = async ({
   discordClient,
