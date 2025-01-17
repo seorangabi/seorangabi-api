@@ -12,6 +12,10 @@ discord.start();
 
 const app = new Hono();
 
+app.get("/health", (c) => {
+	return c.json({ status: "ok" });
+});
+
 app.use(
 	"/uploads/*",
 	serveStatic({
