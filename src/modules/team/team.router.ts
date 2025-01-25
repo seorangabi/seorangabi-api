@@ -3,7 +3,10 @@ import prisma from "../core/libs/prisma.js";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { isUndefined } from "../core/libs/utils.js";
-import type { Prisma } from "../../../prisma/generated/client/index.js";
+import {
+	TeamRole,
+	type Prisma,
+} from "../../../prisma/generated/client/index.js";
 import { useJWT } from "../core/libs/jwt.js";
 
 const teamRoute = new Hono().basePath("/team");
@@ -50,6 +53,7 @@ teamRoute.post(
 			bankNumber: z.string().nullable(),
 			bankAccountHolder: z.string().nullable(),
 			bankProvider: z.string().nullable(),
+			role: z.nativeEnum(TeamRole),
 		}),
 	),
 	async (c) => {
@@ -95,6 +99,7 @@ teamRoute.patch(
 			bankNumber: z.string().nullable().optional(),
 			bankAccountHolder: z.string().nullable().optional(),
 			bankProvider: z.string().nullable().optional(),
+			role: z.nativeEnum(TeamRole).optional(),
 		}),
 	),
 	async (c) => {
@@ -120,6 +125,7 @@ teamRoute.patch(
 				bankProvider: isUndefined(body.bankProvider)
 					? undefined
 					: body.bankProvider,
+				role: isUndefined(body.role) ? undefined : body.role,
 			},
 		});
 

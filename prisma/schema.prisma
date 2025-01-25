@@ -65,6 +65,7 @@ model Team {
   discordUserId     String
   discordChannelId  String
   deletedAt         DateTime?
+  role              TeamRole   @default(ARTIST)
 
   @@index([id])
 }
@@ -132,4 +133,10 @@ enum OfferingStatus {
   OFFERING
   REJECTED
   ACCEPTED
+}
+
+enum TeamRole {
+  ADMIN
+  ARTIST
+  CODER
 }
