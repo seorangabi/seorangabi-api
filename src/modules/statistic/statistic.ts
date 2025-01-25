@@ -73,6 +73,7 @@ statisticRoute.get(
 			},
 			where: {
 				deletedAt: null, // filter for soft delete
+				role: "ARTIST",
 			},
 		});
 
