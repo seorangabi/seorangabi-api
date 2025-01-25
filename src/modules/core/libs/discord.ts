@@ -36,8 +36,6 @@ const start = () => {
 					projectId: id,
 				});
 			}
-		} else {
-			console.log(interaction);
 		}
 	});
 	discordClient.login(process.env.DISCORD_TOKEN);
@@ -84,7 +82,6 @@ Route.get("/register", async (ctx) => {
 	}
 	{
 		const data = await registerResponse.json();
-		console.log(data);
 		return Response.json({ message: "Commands registered" });
 	}
 });

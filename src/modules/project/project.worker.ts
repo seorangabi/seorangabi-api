@@ -14,9 +14,6 @@ export const projectDeadlineWorker = new Worker(
 			where: { id: projectId },
 		});
 		if (!project || project.status === "DONE") {
-			console.log(
-				`Skipping notification for completed project "${projectId}".`,
-			);
 			return;
 		}
 
@@ -37,9 +34,6 @@ export const projectDeadlineWorker = new Worker(
 		});
 
 		if (!offering || !offering?.discordThreadId) {
-			console.log(
-				`Skipping notification for project "${projectId}: no offering".`,
-			);
 			return;
 		}
 
@@ -47,16 +41,10 @@ export const projectDeadlineWorker = new Worker(
 			offering?.team?.discordChannelId,
 		);
 		if (!channel || !(channel instanceof TextChannel)) {
-			console.log(
-				`Skipping notification for project "${projectId}: no channel".`,
-			);
 			return;
 		}
 		const thread = await channel.threads.fetch(offering.discordThreadId);
 		if (!thread) {
-			console.log(
-				`Skipping notification for project "${projectId}: no thread".`,
-			);
 			return;
 		}
 
@@ -72,8 +60,6 @@ export const projectDeadlineWorker = new Worker(
 		await thread.send({
 			content: message,
 		});
-
-		console.log(`🔔 ${message}`);
 	},
 	{ connection: redisInstance },
 );

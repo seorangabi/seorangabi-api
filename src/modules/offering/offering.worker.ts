@@ -32,9 +32,6 @@ export const offeringWorker = new Worker(
 		});
 
 		if (!offering || !offering?.discordThreadId) {
-			console.log(
-				`Skipping notification for offering "${offeringId}: no offering".`,
-			);
 			return;
 		}
 
@@ -44,7 +41,6 @@ export const offeringWorker = new Worker(
 		);
 
 		if (now > confirmationDate && minutes !== 0) {
-			console.log(`Skipping notification for offering "${offering}: expired".`);
 			return;
 		}
 
@@ -52,16 +48,10 @@ export const offeringWorker = new Worker(
 			offering?.team?.discordChannelId,
 		);
 		if (!channel || !(channel instanceof TextChannel)) {
-			console.log(
-				`Skipping notification for offering "${offering}: no channel".`,
-			);
 			return;
 		}
 		const thread = await channel.threads.fetch(offering.discordThreadId);
 		if (!thread) {
-			console.log(
-				`Skipping notification for offering "${offering}: no thread".`,
-			);
 			return;
 		}
 
@@ -84,7 +74,6 @@ export const offeringWorker = new Worker(
 			await thread.send({
 				content: message,
 			});
-			console.log(message);
 			return;
 		}
 
@@ -96,7 +85,6 @@ export const offeringWorker = new Worker(
 		await thread.send({
 			content: message,
 		});
-		console.log(message);
 	},
 	{ connection: redisInstance },
 );
