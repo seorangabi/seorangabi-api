@@ -114,6 +114,7 @@ statisticRoute.post(
 		const punchMyHead = await prisma.statisticPunchMyHead.findFirst({
 			where: {
 				date: today,
+				country,
 			},
 		});
 
@@ -123,10 +124,10 @@ statisticRoute.post(
 			result = await prisma.statisticPunchMyHead.update({
 				where: {
 					id: punchMyHead.id,
+					country,
 				},
 				data: {
 					count: punchMyHead.count + 1,
-					country,
 				},
 			});
 		} else {
@@ -166,6 +167,7 @@ statisticRoute.post(
 		const visitor = await prisma.statisticVisitor.findFirst({
 			where: {
 				date: today,
+				country,
 			},
 		});
 
@@ -175,10 +177,10 @@ statisticRoute.post(
 			result = await prisma.statisticVisitor.update({
 				where: {
 					id: visitor.id,
+					country,
 				},
 				data: {
 					count: visitor.count + 1,
-					country,
 				},
 			});
 		} else {
