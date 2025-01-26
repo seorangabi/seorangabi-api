@@ -2,8 +2,12 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import prisma from "../core/libs/prisma.js";
-import { add, addDays, endOfDay, format, startOfDay } from "date-fns";
+import { addDays, endOfDay, format, startOfDay } from "date-fns";
 import { useJWT } from "../core/libs/jwt.js";
+import type {
+	StatisticPunchMyHead,
+	StatisticVisitor,
+} from "../../../prisma/generated/client/index.js";
 
 const statisticRoute = new Hono().basePath("/statistic");
 
@@ -88,6 +92,142 @@ statisticRoute.get(
 		return c.json({
 			data: {
 				docs,
+			},
+		});
+	},
+);
+
+statisticRoute.post("/punch-my-head", async (c) => {
+	const today = startOfDay(new Date());
+
+	const punchMyHead = await prisma.statisticPunchMyHead.findFirst({
+		where: {
+			date: today,
+		},
+	});
+
+	let result: StatisticPunchMyHead | null = null;
+
+	if (punchMyHead) {
+		result = await prisma.statisticPunchMyHead.update({
+			where: {
+				id: punchMyHead.id,
+			},
+			data: {
+				count: punchMyHead.count + 1,
+			},
+		});
+	} else {
+		result = await prisma.statisticPunchMyHead.create({
+			data: {
+				date: today,
+				count: 1,
+			},
+		});
+	}
+
+	return c.json({
+		data: {
+			date: format(today, "yyyy-MM-dd"),
+			count: result.count || 0,
+		},
+	});
+});
+
+statisticRoute.post("/visitor", async (c) => {
+	const today = startOfDay(new Date());
+
+	const visitor = await prisma.statisticVisitor.findFirst({
+		where: {
+			date: today,
+		},
+	});
+
+	let result: StatisticVisitor | null = null;
+
+	if (visitor) {
+		result = await prisma.statisticVisitor.update({
+			where: {
+				id: visitor.id,
+			},
+			data: {
+				count: visitor.count + 1,
+			},
+		});
+	} else {
+		result = await prisma.statisticVisitor.create({
+			data: {
+				date: today,
+				count: 1,
+			},
+		});
+	}
+
+	return c.json({
+		data: {
+			date: format(today, "yyyy-MM-dd"),
+			count: result.count || 0,
+		},
+	});
+});
+
+statisticRoute.get(
+	"/visitor-and-punch-my-head",
+	useJWT(),
+	zValidator(
+		"query",
+		z.object({ monthIndex: z.coerce.number(), year: z.coerce.number() }),
+	),
+	async (c) => {
+		const query = c.req.valid("query");
+
+		const visitor = await prisma.statisticVisitor.findMany({
+			where: {
+				date: {
+					gte: startOfDay(new Date(query.year, query.monthIndex, 1)),
+					lte: endOfDay(new Date(query.year, query.monthIndex + 1, 0)),
+				},
+			},
+		});
+
+		const punchMyHead = await prisma.statisticPunchMyHead.findMany({
+			where: {
+				date: {
+					gte: startOfDay(new Date(query.year, query.monthIndex, 1)),
+					lte: endOfDay(new Date(query.year, query.monthIndex + 1, 0)),
+				},
+			},
+		});
+
+		const visitorMap = visitor.reduce((acc, curr) => {
+			acc.set(format(curr.date, "dd-MM-yyyy"), curr);
+			return acc;
+		}, new Map<string, StatisticVisitor>());
+		const punchMyHeadMap = punchMyHead.reduce((acc, curr) => {
+			acc.set(format(curr.date, "dd-MM-yyyy"), curr);
+			return acc;
+		}, new Map<string, StatisticPunchMyHead>());
+
+		// generate date from 1 to end of month
+		const result = Array.from(
+			{ length: new Date(query.year, query.monthIndex + 1, 0).getDate() },
+			(_, index) => {
+				const date = new Date(query.year, query.monthIndex, index + 1);
+				const key = format(date, "dd-MM-yyyy");
+				const visitorCount = visitorMap.get(key);
+				const punchMyHeadCount = punchMyHeadMap.get(key);
+
+				return {
+					date: key,
+					visitor: visitorCount?.count || 0,
+					punchMyHead: punchMyHeadCount?.count || 0,
+				};
+			},
+		);
+
+		return c.json({
+			data: {
+				docs: result,
 			},
 		});
 	},

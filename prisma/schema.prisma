@@ -116,6 +116,18 @@ model Task {
   @@index([projectId])
 }
 
+model StatisticVisitor {
+  id    String   @id @default(uuid())
+  date  DateTime // Only date
+  count Int
+}
+
+model StatisticPunchMyHead {
+  id    String   @id @default(uuid())
+  date  DateTime // Only date
+  count Int
+}
+
 enum PayrollStatus {
   DRAFT
   PAID
