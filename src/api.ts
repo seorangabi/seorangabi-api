@@ -19,6 +19,7 @@ api.use(
 			"https://studio.seorangabi.com",
 			"http://localhost:3000",
 			"http://127.0.0.1:5500",
+			"https://www.seorangabi.com",
 		],
 		allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
 		allowHeaders: ["Content-Type", "Authorization"],
