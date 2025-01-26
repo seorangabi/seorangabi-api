@@ -97,79 +97,109 @@ statisticRoute.get(
 	},
 );
 
-statisticRoute.post("/punch-my-head", async (c) => {
-	const today = startOfDay(new Date());
+statisticRoute.post(
+	"/punch-my-head",
+	zValidator(
+		"json",
+		z.object({
+			country: z.string().optional(),
+		}),
+	),
+	async (c) => {
+		const body = c.req.valid("json");
+		const country = body.country;
 
-	const punchMyHead = await prisma.statisticPunchMyHead.findFirst({
-		where: {
-			date: today,
-		},
-	});
+		const today = startOfDay(new Date());
 
-	let result: StatisticPunchMyHead | null = null;
-
-	if (punchMyHead) {
-		result = await prisma.statisticPunchMyHead.update({
+		const punchMyHead = await prisma.statisticPunchMyHead.findFirst({
 			where: {
-				id: punchMyHead.id,
-			},
-			data: {
-				count: punchMyHead.count + 1,
-			},
-		});
-	} else {
-		result = await prisma.statisticPunchMyHead.create({
-			data: {
 				date: today,
-				count: 1,
 			},
 		});
-	}
 
-	return c.json({
-		data: {
-			date: format(today, "yyyy-MM-dd"),
-			count: result.count || 0,
-		},
-	});
-});
+		let result: StatisticPunchMyHead | null = null;
 
-statisticRoute.post("/visitor", async (c) => {
-	const today = startOfDay(new Date());
+		if (punchMyHead) {
+			result = await prisma.statisticPunchMyHead.update({
+				where: {
+					id: punchMyHead.id,
+				},
+				data: {
+					count: punchMyHead.count + 1,
+					country,
+				},
+			});
+		} else {
+			result = await prisma.statisticPunchMyHead.create({
+				data: {
+					date: today,
+					count: 1,
+					country,
+				},
+			});
+		}
 
-	const visitor = await prisma.statisticVisitor.findFirst({
-		where: {
-			date: today,
-		},
-	});
+		return c.json({
+			data: {
+				date: format(today, "yyyy-MM-dd"),
+				count: result.count || 0,
+				country,
+			},
+		});
+	},
+);
 
-	let result: StatisticVisitor | null = null;
+statisticRoute.post(
+	"/visitor",
+	zValidator(
+		"json",
+		z.object({
+			country: z.string().optional(),
+		}),
+	),
+	async (c) => {
+		const body = c.req.valid("json");
+		const country = body.country;
 
-	if (visitor) {
-		result = await prisma.statisticVisitor.update({
+		const today = startOfDay(new Date());
+
+		const visitor = await prisma.statisticVisitor.findFirst({
 			where: {
-				id: visitor.id,
-			},
-			data: {
-				count: visitor.count + 1,
-			},
-		});
-	} else {
-		result = await prisma.statisticVisitor.create({
-			data: {
 				date: today,
-				count: 1,
 			},
 		});
-	}
 
-	return c.json({
-		data: {
-			date: format(today, "yyyy-MM-dd"),
-			count: result.count || 0,
-		},
-	});
-});
+		let result: StatisticVisitor | null = null;
+
+		if (visitor) {
+			result = await prisma.statisticVisitor.update({
+				where: {
+					id: visitor.id,
+				},
+				data: {
+					count: visitor.count + 1,
+					country,
+				},
+			});
+		} else {
+			result = await prisma.statisticVisitor.create({
+				data: {
+					date: today,
+					count: 1,
+					country,
+				},
+			});
+		}
+
+		return c.json({
+			data: {
+				date: format(today, "yyyy-MM-dd"),
+				count: result.count || 0,
+				country,
+			},
+		});
+	},
+);
 
 statisticRoute.get(
 	"/visitor-and-punch-my-head",
