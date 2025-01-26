@@ -176,7 +176,10 @@ statisticRoute.get(
 	useJWT(),
 	zValidator(
 		"query",
-		z.object({ monthIndex: z.coerce.number(), year: z.coerce.number() }),
+		z.object({
+			monthIndex: z.coerce.number(),
+			year: z.coerce.number(),
+		}),
 	),
 	async (c) => {
 		const query = c.req.valid("query");
@@ -190,23 +193,54 @@ statisticRoute.get(
 			},
 		});
 
-		const punchMyHead = await prisma.statisticPunchMyHead.findMany({
-			where: {
-				date: {
-					gte: startOfDay(new Date(query.year, query.monthIndex, 1)),
-					lte: endOfDay(new Date(query.year, query.monthIndex + 1, 0)),
-				},
-			},
-		});
+		// const punchMyHead = await prisma.statisticPunchMyHead.findMany({
+		// 	where: {
+		// 		date: {
+		// 			gte: startOfDay(new Date(query.year, query.monthIndex, 1)),
+		// 			lte: endOfDay(new Date(query.year, query.monthIndex + 1, 0)),
+		// 		},
+		// 	},
+		// });
+
+		const countrySet = new Set<string>();
 
 		const visitorMap = visitor.reduce((acc, curr) => {
-			acc.set(format(curr.date, "dd-MM-yyyy"), curr);
+			const current = acc.get(format(curr.date, "dd-MM-yyyy"));
+
+			if (!current) {
+				acc.set(format(curr.date, "dd-MM-yyyy"), {
+					[curr.country]: curr.count,
+				});
+			} else {
+				acc.set(format(curr.date, "dd-MM-yyyy"), {
+					...current,
+					[curr.country]: curr.count,
+				});
+			}
+
+			countrySet.add(curr.country);
+
 			return acc;
-		}, new Map<string, StatisticVisitor>());
-		const punchMyHeadMap = punchMyHead.reduce((acc, curr) => {
-			acc.set(format(curr.date, "dd-MM-yyyy"), curr);
-			return acc;
-		}, new Map<string, StatisticPunchMyHead>());
+		}, new Map<string, Record<string, number>>());
+
+		// const punchMyHeadMap = punchMyHead.reduce((acc, curr) => {
+		// 	const current = acc.get(format(curr.date, "dd-MM-yyyy"));
+
+		// 	if (!current) {
+		// 		acc.set(format(curr.date, "dd-MM-yyyy"), {
+		// 			[curr.country]: curr.count,
+		// 		});
+		// 	} else {
+		// 		acc.set(format(curr.date, "dd-MM-yyyy"), {
+		// 			...current,
+		// 			[curr.country]: curr.count,
+		// 		});
+		// 	}
+
+		// 	countrySet.add(curr.country);
+
+		// 	return acc;
+		// }, new Map<string, Record<string, number>>());
 
 		// generate date from 1 to end of month
 		const result = Array.from(
@@ -215,12 +249,12 @@ statisticRoute.get(
 				const date = new Date(query.year, query.monthIndex, index + 1);
 				const key = format(date, "dd-MM-yyyy");
 				const visitorCount = visitorMap.get(key);
-				const punchMyHeadCount = punchMyHeadMap.get(key);
+				// const punchMyHeadCount = punchMyHeadMap.get(key);
 
 				return {
 					date: key,
-					visitor: visitorCount?.count || 0,
-					punchMyHead: punchMyHeadCount?.count || 0,
+					visitor: visitorCount || {},
+					// punchMyHead: punchMyHeadCount || {},
 				};
 			},
 		);
@@ -228,6 +262,7 @@ statisticRoute.get(
 		return c.json({
 			data: {
 				docs: result,
+				countries: Array.from(countrySet),
 			},
 		});
 	},

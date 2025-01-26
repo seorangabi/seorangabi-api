@@ -117,15 +117,21 @@ model Task {
 }
 
 model StatisticVisitor {
-  id    String   @id @default(uuid())
-  date  DateTime // Only date
-  count Int
+  id      String   @id @default(uuid())
+  date    DateTime // Only date
+  count   Int
+  country String   @default("Indonesia")
+
+  @@index([country])
 }
 
 model StatisticPunchMyHead {
-  id    String   @id @default(uuid())
-  date  DateTime // Only date
-  count Int
+  id      String   @id @default(uuid())
+  date    DateTime // Only date
+  count   Int
+  country String   @default("Indonesia")
+
+  @@index([country])
 }
 
 enum PayrollStatus {
