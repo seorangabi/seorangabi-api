@@ -70,25 +70,21 @@ taskRouter.post(
 	async (c) => {
 		const body = c.req.valid("json");
 
-		const result = await prisma.$transaction(async (tx) => {
-			const task = await tx.task.create({
-				data: {
-					projectId: body.projectId,
-					fee: body.fee,
-					imageCount: body.imageCount,
-					note: body.note,
-					attachmentUrl: body.attachmentUrl,
-				},
-			});
-
-			await recalculateProject({ prisma: tx, projectId: body.projectId });
-
-			return task;
+		const task = await prisma.task.create({
+			data: {
+				projectId: body.projectId,
+				fee: body.fee,
+				imageCount: body.imageCount,
+				note: body.note,
+				attachmentUrl: body.attachmentUrl,
+			},
 		});
+
+		await recalculateProject({ prisma, projectId: body.projectId });
 
 		return c.json({
 			data: {
-				doc: result,
+				doc: task,
 			},
 		});
 	},
@@ -111,28 +107,24 @@ taskRouter.patch(
 		const body = c.req.valid("json");
 		const id = c.req.param("id");
 
-		const result = await prisma.$transaction(async (tx) => {
-			const task = await prisma.task.update({
-				where: {
-					id,
-				},
-				data: {
-					fee: isUndefined(body.fee) ? undefined : body.fee,
-					note: isUndefined(body.note) ? undefined : body.note,
-					attachmentUrl: isUndefined(body.attachmentUrl)
-						? undefined
-						: body.attachmentUrl,
-				},
-			});
-
-			await recalculateProject({ prisma: tx, projectId: task.projectId });
-
-			return task;
+		const task = await prisma.task.update({
+			where: {
+				id,
+			},
+			data: {
+				fee: isUndefined(body.fee) ? undefined : body.fee,
+				note: isUndefined(body.note) ? undefined : body.note,
+				attachmentUrl: isUndefined(body.attachmentUrl)
+					? undefined
+					: body.attachmentUrl,
+			},
 		});
+
+		await recalculateProject({ prisma, projectId: task.projectId });
 
 		return c.json({
 			data: {
-				doc: result,
+				doc: task,
 			},
 		});
 	},
@@ -141,21 +133,17 @@ taskRouter.patch(
 taskRouter.delete("/:id", useJWT(), async (c) => {
 	const id = c.req.param("id");
 
-	const result = await prisma.$transaction(async (tx) => {
-		const task = await tx.task.delete({
-			where: {
-				id,
-			},
-		});
-
-		await recalculateProject({ prisma: tx, projectId: task.projectId });
-
-		return task;
+	const task = await prisma.task.delete({
+		where: {
+			id,
+		},
 	});
+
+	await recalculateProject({ prisma, projectId: task.projectId });
 
 	return c.json({
 		data: {
-			doc: result,
+			doc: task,
 		},
 	});
 });
