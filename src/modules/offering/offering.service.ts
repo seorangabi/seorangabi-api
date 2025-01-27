@@ -204,7 +204,7 @@ CLIENT : ${project.clientName || "N/A"}
 
 		await thread.send({
 			content: `FEE : ${formatRupiah(task.fee)}\n${task.note}`,
-			files: [attachment],
+			files: task.attachmentUrl ? [attachment] : [],
 		});
 	}
 
