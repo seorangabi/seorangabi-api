@@ -12,7 +12,10 @@ import type {
 	patchProjectJsonSchema,
 	postProjectJsonSchema,
 } from "./project.schema.js";
-import { createOfferingAndInteraction } from "../offering/offering.service.js";
+import {
+	createOfferingAndInteraction,
+	type CreateOfferingAndInteractionProps,
+} from "../offering/offering.service.js";
 import { isUndefined } from "../core/libs/utils.js";
 
 export const createProject = async ({
@@ -26,32 +29,33 @@ export const createProject = async ({
 }) => {
 	const projectId = randomUUID();
 
-	const { tasks, totalFee, totalImageCount } = form.tasks.reduce(
-		(acc, task) => {
-			const temp: Prisma.TaskCreateManyInput = {
-				projectId,
-				fee: task.fee,
-				imageCount: task.imageCount,
-				note: task.note || "",
-				attachmentUrl: task.attachmentUrl,
-			};
+	const createTasksInput: Prisma.TaskCreateManyInput[] = [];
+	const createTaskAttachmentsInput: Prisma.TaskAttachmentCreateManyInput[] = [];
+	let totalFee = 0;
+	let totalImageCount = 0;
 
-			return {
-				tasks: [...acc.tasks, temp],
-				totalFee: acc.totalFee + task.fee,
-				totalImageCount: acc.totalImageCount + task.imageCount,
-			};
-		},
-		{
-			tasks: [],
-			totalFee: 0,
-			totalImageCount: 0,
-		} as {
-			tasks: Prisma.TaskCreateManyInput[];
-			totalFee: number;
-			totalImageCount: number;
-		},
-	);
+	for (const task of form.tasks) {
+		const taskId = randomUUID();
+
+		totalFee = totalFee + task.fee;
+		totalImageCount = totalImageCount + task.imageCount;
+
+		createTasksInput.push({
+			id: taskId,
+			projectId,
+			fee: task.fee,
+			imageCount: task.imageCount,
+			note: task.note || "",
+			attachmentUrl: "", // TODO: Delete soon
+		});
+
+		for (const taskAttachment of task.attachments) {
+			createTaskAttachmentsInput.push({
+				taskId,
+				url: taskAttachment,
+			});
+		}
+	}
 
 	const project = await prisma.project.create({
 		data: {
@@ -70,7 +74,11 @@ export const createProject = async ({
 	});
 
 	await prisma.task.createMany({
-		data: tasks,
+		data: createTasksInput,
+	});
+
+	await prisma.taskAttachment.createMany({
+		data: createTaskAttachmentsInput,
 	});
 
 	await createOfferingAndInteraction({
@@ -90,7 +98,7 @@ export const createProject = async ({
 			confirmationDuration: form.confirmationDuration,
 			note: form.note || "",
 		},
-		tasks,
+		tasks: form.tasks,
 	});
 
 	return { project };
@@ -190,6 +198,10 @@ export const updateProject = async ({
 			deadline: isUndefined(body.deadline) ? undefined : body.deadline,
 		},
 	});
+
+	/**
+	 * @see /src/modules/task/task.service.ts
+	 */
 
 	if (body.status === "DONE") {
 		const { thread, team } = await getOfferingTeamThreadFromProjectId({

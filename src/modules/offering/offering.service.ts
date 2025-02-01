@@ -82,13 +82,7 @@ const confirmationDurationText = (confirmationDuration: number) => {
 	)}_`;
 };
 
-export const createOfferingAndInteraction = async ({
-	discordClient,
-	prisma,
-	body,
-	project,
-	tasks,
-}: {
+export type CreateOfferingAndInteractionProps = {
 	discordClient: Client;
 	prisma: Omit<
 		PrismaClient<Prisma.PrismaClientOptions>,
@@ -105,9 +99,17 @@ export const createOfferingAndInteraction = async ({
 	tasks: {
 		fee: number;
 		note?: string;
-		attachmentUrl: string;
+		attachments: string[];
 	}[];
-}) => {
+};
+
+export const createOfferingAndInteraction = async ({
+	discordClient,
+	prisma,
+	body,
+	project,
+	tasks,
+}: CreateOfferingAndInteractionProps) => {
 	const team = await prisma.team.findUniqueOrThrow({
 		where: {
 			id: body.teamId,
@@ -197,14 +199,20 @@ CLIENT : ${project.clientName || "N/A"}
 	});
 
 	for (const task of tasks) {
-		const name = task.attachmentUrl.split("/").pop();
-		const attachment = new AttachmentBuilder(task.attachmentUrl, {
-			name,
-		});
+		const attachments: AttachmentBuilder[] = [];
+
+		for (const attachment of task.attachments) {
+			const name = attachment.split("/").pop();
+			attachments.push(
+				new AttachmentBuilder(attachment, {
+					name,
+				}),
+			);
+		}
 
 		await thread.send({
 			content: `FEE : ${formatRupiah(task.fee)}\n${task.note}`,
-			files: task.attachmentUrl ? [attachment] : [],
+			files: attachments,
 		});
 	}
 

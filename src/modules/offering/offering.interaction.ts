@@ -153,6 +153,9 @@ export const chooseTeamInteraction = async ({
 		orderBy: {
 			createdAt: "asc",
 		},
+		include: {
+			attachments: true,
+		},
 	});
 
 	await prisma.$transaction(async (trx) => {
@@ -182,7 +185,10 @@ export const chooseTeamInteraction = async ({
 				confirmationDuration: project.confirmationDuration,
 				note: project.note || "",
 			},
-			tasks: tasks,
+			tasks: tasks.map((task) => ({
+				...task,
+				attachments: task.attachments.map((attachment) => attachment.url),
+			})),
 		});
 
 		await interaction.channel?.delete().catch(() => {});

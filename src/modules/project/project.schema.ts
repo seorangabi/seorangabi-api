@@ -27,7 +27,7 @@ export const postProjectJsonSchema = z.object({
 			fee: z.coerce.number(),
 			note: z.string(),
 			imageCount: z.coerce.number(),
-			attachmentUrl: z.string(),
+			attachments: z.array(z.string()),
 		}),
 	),
 	confirmationDuration: z.number(),

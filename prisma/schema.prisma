@@ -103,17 +103,28 @@ model Payroll {
 }
 
 model Task {
-  id            String   @id @default(uuid())
+  id            String           @id @default(uuid())
   fee           Int
   note          String
   imageCount    Int
-  project       Project  @relation(fields: [projectId], references: [id])
+  project       Project          @relation(fields: [projectId], references: [id])
   projectId     String
-  createdAt     DateTime @default(now())
-  attachmentUrl String
+  createdAt     DateTime         @default(now())
+  attachmentUrl String // TODO: Delete soon
+  attachments   TaskAttachment[]
 
   @@index([id])
   @@index([projectId])
+}
+
+model TaskAttachment {
+  id     String @id @default(uuid())
+  url    String
+  Task   Task   @relation(fields: [taskId], references: [id])
+  taskId String
+
+  @@index([id])
+  @@index([taskId])
 }
 
 model StatisticVisitor {

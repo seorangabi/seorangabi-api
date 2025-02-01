@@ -6,6 +6,7 @@ import { zValidator } from "@hono/zod-validator";
 import type { Prisma } from "../../../prisma/generated/client/index.js";
 import prisma from "../core/libs/prisma.js";
 import { recalculateProject } from "../project/project.service.js";
+import { randomUUID } from "node:crypto";
 
 const taskRouter = new Hono().basePath("/task");
 
@@ -44,6 +45,9 @@ taskRouter.get(
 		const result = await prisma.task.findMany({
 			where,
 			orderBy,
+			include: {
+				attachments: true,
+			},
 		});
 
 		return c.json({
@@ -64,20 +68,36 @@ taskRouter.post(
 			fee: z.number(),
 			imageCount: z.number(),
 			note: z.string(),
-			attachmentUrl: z.string(),
+			attachments: z.array(z.string()),
 		}),
 	),
 	async (c) => {
 		const body = c.req.valid("json");
 
+		const id = randomUUID();
+
 		const task = await prisma.task.create({
 			data: {
+				id,
 				projectId: body.projectId,
 				fee: body.fee,
 				imageCount: body.imageCount,
 				note: body.note,
-				attachmentUrl: body.attachmentUrl,
+				attachmentUrl: "", // TODO: Delete soon
 			},
+		});
+
+		const createTaskAttachmentsInput: Prisma.TaskAttachmentCreateManyInput[] =
+			[];
+		for (const taskAttachment of body.attachments) {
+			createTaskAttachmentsInput.push({
+				taskId: id,
+				url: taskAttachment,
+			});
+		}
+
+		await prisma.taskAttachment.createMany({
+			data: createTaskAttachmentsInput,
 		});
 
 		await recalculateProject({ prisma, projectId: body.projectId });
@@ -100,7 +120,7 @@ taskRouter.patch(
 			fee: z.number().optional(),
 			imageCount: z.number().optional(),
 			note: z.string().optional(),
-			attachmentUrl: z.string().optional(),
+			attachments: z.array(z.string()),
 		}),
 	),
 	async (c) => {
@@ -114,10 +134,26 @@ taskRouter.patch(
 			data: {
 				fee: isUndefined(body.fee) ? undefined : body.fee,
 				note: isUndefined(body.note) ? undefined : body.note,
-				attachmentUrl: isUndefined(body.attachmentUrl)
-					? undefined
-					: body.attachmentUrl,
+				attachmentUrl: "",
 			},
+		});
+
+		const createTaskAttachmentsInput: Prisma.TaskAttachmentCreateManyInput[] =
+			[];
+		for (const taskAttachment of body.attachments) {
+			createTaskAttachmentsInput.push({
+				taskId: id,
+				url: taskAttachment,
+			});
+		}
+
+		await prisma.taskAttachment.deleteMany({
+			where: {
+				taskId: id,
+			},
+		});
+		await prisma.taskAttachment.createMany({
+			data: createTaskAttachmentsInput,
 		});
 
 		await recalculateProject({ prisma, projectId: task.projectId });
@@ -132,6 +168,13 @@ taskRouter.patch(
 
 taskRouter.delete("/:id", useJWT(), async (c) => {
 	const id = c.req.param("id");
+
+	// TODO: delete file
+	await prisma.taskAttachment.deleteMany({
+		where: {
+			taskId: id,
+		},
+	});
 
 	const task = await prisma.task.delete({
 		where: {
