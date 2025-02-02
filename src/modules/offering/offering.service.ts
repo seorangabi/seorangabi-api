@@ -160,10 +160,10 @@ export const createOfferingAndInteraction = async ({
 	await thread.send({
 		content: `
 🌟 NEW PROJECT 🌟
-${String(project.name).toUpperCase()}
+${project.name}
 DL: ${deadlineText}
-RATIO : ${String(project.imageRatio || "N/A").toUpperCase()}
-CLIENT : ${String(project.clientName || "N/A").toUpperCase()}
+RATIO : ${project.imageRatio || "N/A"}
+CLIENT : ${project.clientName || "N/A"}
     `,
 	});
 
