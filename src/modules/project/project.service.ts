@@ -179,6 +179,11 @@ export const updateProject = async ({
 	prisma: PrismaClient;
 	discordClient: Client;
 }) => {
+	const oldProject = await prisma.project.findFirst({
+		where: {
+			id,
+		},
+	});
 	const project = await prisma.project.update({
 		where: {
 			id,
@@ -200,6 +205,7 @@ export const updateProject = async ({
 	});
 
 	/**
+	 * For update task
 	 * @see /src/modules/task/task.service.ts
 	 */
 
@@ -208,6 +214,9 @@ export const updateProject = async ({
 			prisma: prisma,
 			discordClient,
 			projectId: id,
+			status: {
+				in: ["ACCEPTED", "OFFERING"],
+			},
 		});
 
 		await thread.send({
@@ -220,10 +229,31 @@ export const updateProject = async ({
 			prisma: prisma,
 			discordClient,
 			projectId: id,
+			status: {
+				in: ["ACCEPTED", "OFFERING"],
+			},
 		});
 
 		await thread.send({
 			content: `Sorry guys <@${team.discordUserId}> project dibatalkan ❌`,
+		});
+	}
+
+	const revertToInprogress =
+		oldProject?.status === "DONE" && project.status === "IN_PROGRESS";
+
+	if (revertToInprogress) {
+		const { thread, team } = await getOfferingTeamThreadFromProjectId({
+			prisma: prisma,
+			discordClient,
+			projectId: id,
+			status: {
+				in: ["ACCEPTED", "OFFERING"],
+			},
+		});
+
+		await thread.send({
+			content: `Sorry guys <@${team.discordUserId}> status dikembalikan ke in progress 🙏`,
 		});
 	}
 
@@ -234,12 +264,12 @@ export const getOfferingTeamThreadFromProjectId = async ({
 	discordClient,
 	prisma,
 	projectId,
-	status = "ACCEPTED",
+	status,
 }: {
 	discordClient: Client;
 	prisma: PrismaClient;
 	projectId: string;
-	status?: OfferingStatus;
+	status: Required<Prisma.OfferingFindManyArgs>["where"]["status"];
 }) => {
 	const offerings = await prisma.offering.findMany({
 		where: {
