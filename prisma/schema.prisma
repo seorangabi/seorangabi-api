@@ -40,6 +40,8 @@ model Project {
   isPaid    Boolean @default(false)
   payrollId String?
 
+  autoNumberTask Boolean @default(true)
+
   confirmationDuration Int @default(0) // millisecond
 
   offering Offering[]

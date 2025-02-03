@@ -12,10 +12,7 @@ import type {
 	patchProjectJsonSchema,
 	postProjectJsonSchema,
 } from "./project.schema.js";
-import {
-	createOfferingAndInteraction,
-	type CreateOfferingAndInteractionProps,
-} from "../offering/offering.service.js";
+import { createOfferingAndInteraction } from "../offering/offering.service.js";
 import { isUndefined } from "../core/libs/utils.js";
 
 export const createProject = async ({
@@ -70,6 +67,8 @@ export const createProject = async ({
 			fee: totalFee,
 			imageCount: totalImageCount,
 			confirmationDuration: form.confirmationDuration,
+
+			autoNumberTask: form.autoNumberTask,
 		},
 	});
 
@@ -97,6 +96,7 @@ export const createProject = async ({
 			imageRatio: form.imageRatio,
 			confirmationDuration: form.confirmationDuration,
 			note: form.note || "",
+			autoNumberTask: form.autoNumberTask ?? true,
 		},
 		tasks: form.tasks,
 	});
@@ -201,6 +201,10 @@ export const updateProject = async ({
 			// Offering
 			fee: isUndefined(body.fee) ? undefined : body.fee,
 			deadline: isUndefined(body.deadline) ? undefined : body.deadline,
+
+			autoNumberTask: isUndefined(body.autoNumberTask)
+				? undefined
+				: body.autoNumberTask,
 		},
 	});
 

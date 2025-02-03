@@ -184,6 +184,7 @@ export const chooseTeamInteraction = async ({
 				clientName: project.clientName,
 				confirmationDuration: project.confirmationDuration,
 				note: project.note || "",
+				autoNumberTask: project.autoNumberTask,
 			},
 			tasks: tasks.map((task) => ({
 				...task,

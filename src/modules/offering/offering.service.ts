@@ -95,6 +95,7 @@ export type CreateOfferingAndInteractionProps = {
 		imageRatio: string;
 		clientName: string;
 		confirmationDuration: number;
+		autoNumberTask: boolean;
 	};
 	tasks: {
 		fee: number;
@@ -198,7 +199,9 @@ CLIENT : ${project.clientName || "N/A"}
 		components: [row],
 	});
 
-	for (const task of tasks) {
+	for (const taskIndex in tasks) {
+		const task = tasks[taskIndex];
+
 		const attachments: AttachmentBuilder[] = [];
 
 		for (const attachment of task.attachments) {
@@ -211,7 +214,7 @@ CLIENT : ${project.clientName || "N/A"}
 		}
 
 		await thread.send({
-			content: `FEE : ${formatRupiah(task.fee)}\n${task.note}`,
+			content: `${project.autoNumberTask ? `**Task ${+taskIndex + 1}**\n` : ""}FEE : ${formatRupiah(task.fee)}\n${task.note}`,
 			files: attachments,
 		});
 	}

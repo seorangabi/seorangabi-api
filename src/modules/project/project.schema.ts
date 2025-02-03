@@ -32,6 +32,7 @@ export const postProjectJsonSchema = z.object({
 	),
 	confirmationDuration: z.number(),
 	note: z.string().nullable(),
+	autoNumberTask: z.boolean().optional(),
 });
 
 export const patchProjectJsonSchema = z.object({
@@ -48,4 +49,6 @@ export const patchProjectJsonSchema = z.object({
 	fee: z.number().optional(),
 	note: z.string().nullable().optional(),
 	deadline: z.string().optional(),
+
+	autoNumberTask: z.boolean().optional(),
 });
