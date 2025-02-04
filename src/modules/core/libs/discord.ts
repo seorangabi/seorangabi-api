@@ -1,4 +1,5 @@
 import {
+	ChatInputCommandInteraction,
 	Client,
 	GatewayIntentBits,
 	StringSelectMenuInteraction,
@@ -9,6 +10,9 @@ import {
 } from "../../offering/offering.interaction.js";
 import { Hono } from "hono";
 import { env } from "hono/adapter";
+import prisma from "./prisma.js";
+import { updateProject } from "../../project/project.service.js";
+import config from "../config/index.js";
 
 const discordClient = new Client({
 	intents: [GatewayIntentBits.Guilds],
@@ -37,6 +41,55 @@ const start = () => {
 				});
 			}
 		}
+
+		if (interaction instanceof ChatInputCommandInteraction) {
+			if (interaction.commandName === "done") {
+				const adminDiscordId = await config.getAdminDiscordId();
+
+				if (adminDiscordId !== interaction.user.id) {
+					interaction.reply("Hanya admin yang diperbolehkan");
+					return;
+				}
+
+				const offering = await prisma.offering.findFirst({
+					where: {
+						discordThreadId: interaction.channelId,
+					},
+				});
+
+				if (!offering) {
+					interaction.reply("Offering tidak ditemukan");
+					return;
+				}
+
+				if (offering.status !== "ACCEPTED") {
+					interaction.reply("Konfirmasi dahulu offering nya 🙏");
+					return;
+				}
+
+				const project = await prisma.project.findFirst({
+					where: {
+						id: offering.projectId,
+					},
+				});
+
+				if (!project) {
+					interaction.reply("Project tidak ditemukan");
+					return;
+				}
+
+				interaction.reply("Acc ✅");
+
+				await updateProject({
+					id: project.id,
+					body: {
+						status: "DONE",
+					},
+					prisma,
+					discordClient,
+				});
+			}
+		}
 	});
 	discordClient.login(process.env.DISCORD_TOKEN);
 };
@@ -45,13 +98,8 @@ const Route = new Hono().basePath("/discord");
 
 const Commands = [
 	{
-		name: "hello",
-		description: "Says hello back to you",
-		// @ts-ignore
-		run: (interaction) => {
-			const user = interaction.member.user.id;
-			return Promise.resolve(`Hello <@${user}>!`);
-		},
+		name: "done",
+		description: "Mengupdate status project menjadi done",
 	},
 ];
 
