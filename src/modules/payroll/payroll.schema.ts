@@ -12,9 +12,9 @@ export const getListPayrollQuerySchema = z.object({
 		.optional(),
 	status_eq: z.enum(["DRAFT", "PAID"]).optional(),
 	team_id_eq: z.string().optional(),
-	skip: z.coerce.number().optional(),
-	limit: z.coerce.number().optional(),
 	sort: z.union([sort, z.array(sort)]).optional(),
+	period_start_gte: z.string().optional(),
+	period_end_lte: z.string().optional(),
 });
 
 export const postPayrollJsonSchema = z.object({

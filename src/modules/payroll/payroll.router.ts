@@ -24,7 +24,7 @@ payrollRoute.get(
 	async (c) => {
 		const query = c.req.valid("query");
 
-		const { hasNext, hasPrev, result } = await getListPayroll({
+		const { result } = await getListPayroll({
 			query,
 			prisma,
 		});
@@ -32,10 +32,6 @@ payrollRoute.get(
 		return c.json({
 			data: {
 				docs: result,
-				pagination: {
-					hasNext,
-					hasPrev,
-				},
 			},
 		});
 	},

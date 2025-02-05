@@ -10,6 +10,7 @@ import type {
 	postPayrollJsonSchema,
 } from "./payroll.schema.js";
 import { isUndefined } from "../core/libs/utils.js";
+import { endOfDay, startOfDay } from "date-fns";
 
 const onStatusChange = async ({
 	prisma,
@@ -248,26 +249,24 @@ export const getListPayroll = async ({
 	if (!isUndefined(query.team_id_eq)) {
 		where.teamId = query.team_id_eq;
 	}
+	if (!isUndefined(query.period_start_gte)) {
+		where.periodStart = {
+			gte: query.period_start_gte,
+		};
+	}
+	if (!isUndefined(query.period_end_lte)) {
+		where.periodEnd = {
+			lte: query.period_end_lte,
+		};
+	}
 
 	const result = await prisma.payroll.findMany({
 		include,
 		orderBy,
 		where,
-		...(!isUndefined(query.skip) && { skip: query.skip }),
-		...(!isUndefined(query.limit) && { take: query.limit + 1 }),
 	});
-
-	let hasNext = false;
-	if (query.limit && result.length > query.limit) {
-		result.pop();
-		hasNext = true;
-	}
-
-	const hasPrev = !isUndefined(query.skip) && query.skip > 0;
 
 	return {
 		result,
-		hasNext,
-		hasPrev,
 	};
 };
