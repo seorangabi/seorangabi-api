@@ -116,6 +116,7 @@ export const getListProject = async ({
 		const withArray = Array.isArray(query.with) ? query.with : [query.with];
 
 		if (withArray.includes("team")) include.team = true;
+		if (withArray.includes("payroll")) include.payroll = true;
 	}
 
 	const orderBy: Prisma.ProjectOrderByWithRelationInput = {};
@@ -144,6 +145,13 @@ export const getListProject = async ({
 	}
 	if (query.is_paid_eq === "true") where.isPaid = true;
 	if (query.is_paid_eq === "false") where.isPaid = false;
+
+	where.createdAt = {
+		...(!isUndefined(query.created_at_gte) && {
+			gte: query.created_at_gte,
+		}),
+		...(!isUndefined(query.create_at_lte) && { lte: query.create_at_lte }),
+	};
 
 	const result = await prisma.project.findMany({
 		include,
