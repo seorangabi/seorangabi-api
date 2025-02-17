@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const withTeam = z.enum(["team"]);
+const withProject = z.enum(["team", "payroll"]);
 const sort = z.enum(["created_at:asc", "created_at:desc"]);
 
 export const getListProjectJsonSchema = z.object({
@@ -12,8 +12,10 @@ export const getListProjectJsonSchema = z.object({
 	is_paid_eq: z.enum(["true", "false"]).optional(),
 	skip: z.coerce.number().optional(),
 	limit: z.coerce.number().optional(),
-	with: z.union([withTeam, z.array(withTeam)]).optional(),
+	with: z.union([withProject, z.array(withProject)]).optional(),
 	sort: z.union([sort, z.array(sort)]).optional(),
+	created_at_gte: z.string().optional(),
+	create_at_lte: z.string().optional(),
 });
 
 export const postProjectJsonSchema = z.object({
