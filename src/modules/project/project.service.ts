@@ -430,3 +430,43 @@ export const recalculateProject = async ({
 		},
 	});
 };
+
+export const deleteProject = async ({
+	prisma,
+	projectId,
+	deleteThread,
+	discordClient,
+}: {
+	prisma: PrismaClient;
+	projectId: string;
+	deleteThread: boolean;
+	discordClient: Client;
+}) => {
+	const result = await prisma.project.update({
+		data: {
+			deletedAt: new Date().toISOString(),
+		},
+		where: {
+			id: projectId,
+		},
+	});
+
+	if (deleteThread) {
+		try {
+			const { thread } = await getOfferingTeamThreadFromProjectId({
+				prisma: prisma,
+				discordClient,
+				projectId: projectId,
+				status: {
+					in: ["ACCEPTED", "OFFERING"],
+				},
+			});
+
+			if (thread) thread.delete();
+		} catch (error) {
+			console.log(error);
+		}
+	}
+
+	return result;
+};

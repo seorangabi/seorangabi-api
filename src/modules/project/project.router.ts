@@ -10,10 +10,12 @@ import {
 } from "./project.schema.js";
 import {
 	createProject,
+	deleteProject,
 	getListProject,
 	updateProject,
 } from "./project.service.js";
 import { useJWT } from "../core/libs/jwt.js";
+import { z } from "zod";
 
 const projectRoute = new Hono().basePath("/project");
 
@@ -59,24 +61,29 @@ projectRoute.post(
 	},
 );
 
-projectRoute.delete("/:id", useJWT(), async (c) => {
-	const id = c.req.param("id");
+projectRoute.delete(
+	"/:id",
+	zValidator("query", z.object({ deleteThread: z.string() })),
+	useJWT(),
+	async (c) => {
+		const id = c.req.param("id");
+		const deleteThread = c.req.valid("query").deleteThread === "true";
+		const discordClient = c.get("discordClient");
 
-	const result = await prisma.project.update({
-		data: {
-			deletedAt: new Date().toISOString(),
-		},
-		where: {
-			id,
-		},
-	});
+		const result = deleteProject({
+			deleteThread,
+			discordClient,
+			prisma,
+			projectId: id,
+		});
 
-	return c.json({
-		data: {
-			doc: result,
-		},
-	});
-});
+		return c.json({
+			data: {
+				doc: result,
+			},
+		});
+	},
+);
 
 projectRoute.patch(
 	"/:id",
