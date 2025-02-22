@@ -3,10 +3,17 @@ import { isUndefined } from "../core/libs/utils.js";
 import { z } from "zod";
 import { useJWT } from "../core/libs/jwt.js";
 import { zValidator } from "@hono/zod-validator";
-import type { Prisma } from "../../../prisma/generated/client/index.js";
+import {
+	OfferingStatus,
+	type Prisma,
+} from "../../../prisma/generated/client/index.js";
 import prisma from "../core/libs/prisma.js";
-import { recalculateProject } from "../project/project.service.js";
+import {
+	getOfferingTeamThreadFromProjectId,
+	recalculateProject,
+} from "../project/project.service.js";
 import { randomUUID } from "node:crypto";
+import { sendTaskMessage } from "../offering/offering.service.js";
 
 const taskRouter = new Hono().basePath("/task");
 
@@ -69,12 +76,25 @@ taskRouter.post(
 			imageCount: z.number(),
 			note: z.string(),
 			attachments: z.array(z.string()),
+			taskNumber: z.number().optional(),
 		}),
 	),
 	async (c) => {
 		const body = c.req.valid("json");
+		const discordClient = c.get("discordClient");
 
 		const id = randomUUID();
+
+		const project = await prisma.project.findFirst({
+			where: {
+				id: body.projectId,
+			},
+			include: {
+				team: true,
+			},
+		});
+
+		if (!project) throw new Error("Project not found");
 
 		const task = await prisma.task.create({
 			data: {
@@ -101,6 +121,28 @@ taskRouter.post(
 		});
 
 		await recalculateProject({ prisma, projectId: body.projectId });
+
+		if (project.status !== "DRAFT") {
+			const { thread } = await getOfferingTeamThreadFromProjectId({
+				discordClient,
+				prisma,
+				projectId: body.projectId,
+				status: {
+					in: ["OFFERING", "ACCEPTED"],
+				},
+			});
+
+			await sendTaskMessage({
+				task: {
+					fee: body.fee,
+					note: body.note,
+					attachments: body.attachments,
+				},
+				autoNumberTask: project.autoNumberTask,
+				thread,
+				taskNumber: body.taskNumber || 0,
+			});
+		}
 
 		return c.json({
 			data: {

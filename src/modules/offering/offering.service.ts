@@ -4,6 +4,8 @@ import {
 	AttachmentBuilder,
 	ChannelType,
 	type Client,
+	type PrivateThreadChannel,
+	type PublicThreadChannel,
 	StringSelectMenuBuilder,
 	StringSelectMenuOptionBuilder,
 	TextChannel,
@@ -104,6 +106,40 @@ export type CreateOfferingAndInteractionProps = {
 	}[];
 };
 
+export const sendTaskMessage = async ({
+	thread,
+	task,
+	taskNumber,
+	autoNumberTask,
+}: {
+	thread: PrivateThreadChannel | PublicThreadChannel<false>;
+	task: {
+		fee: number;
+		note?: string;
+		attachments: string[];
+	};
+	taskNumber: number;
+	autoNumberTask: boolean;
+}) => {
+	const attachments: AttachmentBuilder[] = [];
+
+	for (const attachment of task.attachments) {
+		const name = attachment.split("/").pop();
+		attachments.push(
+			new AttachmentBuilder(attachment, {
+				name,
+			}),
+		);
+	}
+
+	await thread.send({
+		content: `${autoNumberTask ? `${+taskNumber}. ` : ""}FEE : ${formatRupiah(
+			task.fee,
+		)}\n${task.note}\n ** **`,
+		files: attachments,
+	});
+};
+
 export const createOfferingAndInteraction = async ({
 	discordClient,
 	prisma,
@@ -201,24 +237,11 @@ CLIENT : ${project.clientName || "N/A"}
 
 	for (const taskIndex in tasks) {
 		const task = tasks[taskIndex];
-		const isLastTask = tasks.length - 1 === +taskIndex;
-
-		const attachments: AttachmentBuilder[] = [];
-
-		for (const attachment of task.attachments) {
-			const name = attachment.split("/").pop();
-			attachments.push(
-				new AttachmentBuilder(attachment, {
-					name,
-				}),
-			);
-		}
-
-		await thread.send({
-			content: `${project.autoNumberTask ? `${+taskIndex + 1}. ` : ""}FEE : ${formatRupiah(
-				task.fee,
-			)}\n${task.note}\n ${isLastTask ? "" : "** **"}`,
-			files: attachments,
+		await sendTaskMessage({
+			task,
+			thread,
+			taskNumber: +taskIndex + 1,
+			autoNumberTask: project.autoNumberTask,
 		});
 	}
 
