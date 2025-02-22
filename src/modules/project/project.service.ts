@@ -46,7 +46,6 @@ export const createProject = async ({
 			fee: task.fee,
 			imageCount: task.imageCount,
 			note: task.note || "",
-			attachmentUrl: "", // TODO: Delete soon
 		});
 
 		for (const taskAttachment of task.attachments) {

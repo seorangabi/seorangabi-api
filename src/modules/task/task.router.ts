@@ -103,7 +103,6 @@ taskRouter.post(
 				fee: body.fee,
 				imageCount: body.imageCount,
 				note: body.note,
-				attachmentUrl: "", // TODO: Delete soon
 			},
 		});
 
@@ -176,7 +175,6 @@ taskRouter.patch(
 			data: {
 				fee: isUndefined(body.fee) ? undefined : body.fee,
 				note: isUndefined(body.note) ? undefined : body.note,
-				attachmentUrl: "",
 			},
 		});
 
