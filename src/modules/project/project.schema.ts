@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ProjectStatus } from "../../../prisma/generated/client/index.js";
 
 const withProject = z.enum(["team", "payroll"]);
 const sort = z.enum(["created_at:asc", "created_at:desc"]);
@@ -6,9 +7,7 @@ const sort = z.enum(["created_at:asc", "created_at:desc"]);
 export const getListProjectJsonSchema = z.object({
 	id_eq: z.string().optional(),
 	team_id_eq: z.string().optional(),
-	status_eq: z
-		.enum(["OFFERING", "IN_PROGRESS", "REVISION", "DONE", "CANCELLED"])
-		.optional(),
+	status_eq: z.nativeEnum(ProjectStatus).optional(),
 	is_paid_eq: z.enum(["true", "false"]).optional(),
 	skip: z.coerce.number().optional(),
 	limit: z.coerce.number().optional(),
@@ -35,14 +34,14 @@ export const postProjectJsonSchema = z.object({
 	confirmationDuration: z.number(),
 	note: z.string().nullable(),
 	autoNumberTask: z.boolean().optional(),
+
+	isPublished: z.boolean().optional().default(true),
 });
 
 export const patchProjectJsonSchema = z.object({
 	name: z.string().optional(),
 	imageRatio: z.string().optional(),
-	status: z
-		.enum(["OFFERING", "IN_PROGRESS", "REVISION", "DONE", "CANCELLED"])
-		.optional(),
+	status: z.nativeEnum(ProjectStatus).optional(),
 	teamId: z.string().optional(),
 	imageCount: z.number().optional(),
 	clientName: z.string().optional(),

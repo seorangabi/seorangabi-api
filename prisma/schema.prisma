@@ -46,9 +46,10 @@ model Project {
 
   offering Offering[]
 
-  payroll Payroll? @relation(fields: [payrollId], references: [id])
-  team    Team?    @relation(fields: [teamId], references: [id])
-  tasks   Task[]
+  payroll     Payroll?  @relation(fields: [payrollId], references: [id])
+  team        Team?     @relation(fields: [teamId], references: [id])
+  tasks       Task[]
+  publishedAt DateTime?
 
   @@index([id])
   @@index([teamId])
@@ -153,6 +154,7 @@ enum PayrollStatus {
 }
 
 enum ProjectStatus {
+  DRAFT
   OFFERING
   IN_PROGRESS
   REVISION

@@ -12,7 +12,10 @@ import type {
 	patchProjectJsonSchema,
 	postProjectJsonSchema,
 } from "./project.schema.js";
-import { createOfferingAndInteraction } from "../offering/offering.service.js";
+import {
+	createOfferingAndInteraction,
+	type CreateOfferingAndInteractionProps,
+} from "../offering/offering.service.js";
 import { isUndefined } from "../core/libs/utils.js";
 
 export const createProject = async ({
@@ -69,6 +72,8 @@ export const createProject = async ({
 			confirmationDuration: form.confirmationDuration,
 
 			autoNumberTask: form.autoNumberTask,
+			status: form.isPublished ? "OFFERING" : "DRAFT",
+			publishedAt: form.isPublished ? new Date().toISOString() : null,
 		},
 	});
 
@@ -80,26 +85,28 @@ export const createProject = async ({
 		data: createTaskAttachmentsInput,
 	});
 
-	await createOfferingAndInteraction({
-		prisma: prisma,
-		body: {
-			deadline: form.deadline,
-			fee: totalFee,
-			projectId: project.id,
-			teamId: form.teamId,
-			confirmationDuration: form.confirmationDuration,
-		},
-		discordClient,
-		project: {
-			clientName: form.clientName,
-			name: form.name,
-			imageRatio: form.imageRatio,
-			confirmationDuration: form.confirmationDuration,
-			note: form.note || "",
-			autoNumberTask: form.autoNumberTask ?? true,
-		},
-		tasks: form.tasks,
-	});
+	if (form.isPublished) {
+		await createOfferingAndInteraction({
+			prisma: prisma,
+			body: {
+				deadline: form.deadline,
+				fee: totalFee,
+				projectId: project.id,
+				teamId: form.teamId,
+				confirmationDuration: form.confirmationDuration,
+			},
+			discordClient,
+			project: {
+				clientName: form.clientName,
+				name: form.name,
+				imageRatio: form.imageRatio,
+				confirmationDuration: form.confirmationDuration,
+				note: form.note || "",
+				autoNumberTask: form.autoNumberTask ?? true,
+			},
+			tasks: form.tasks,
+		});
+	}
 
 	return { project };
 };
@@ -192,6 +199,10 @@ export const updateProject = async ({
 			id,
 		},
 	});
+
+	const isPublished = oldProject?.status === "DRAFT" && body.status !== "DRAFT";
+	const isDone = oldProject?.status !== "DONE" && body.status === "DONE";
+
 	const project = await prisma.project.update({
 		where: {
 			id,
@@ -203,7 +214,7 @@ export const updateProject = async ({
 			teamId: isUndefined(body.teamId) ? undefined : body.teamId,
 			imageCount: isUndefined(body.imageCount) ? undefined : body.imageCount,
 			clientName: isUndefined(body.clientName) ? undefined : body.clientName,
-			doneAt: body.status === "DONE" ? new Date().toISOString() : undefined,
+			doneAt: isDone ? new Date().toISOString() : undefined,
 			note: isUndefined(body.note) ? undefined : body.note,
 
 			// Offering
@@ -213,8 +224,51 @@ export const updateProject = async ({
 			autoNumberTask: isUndefined(body.autoNumberTask)
 				? undefined
 				: body.autoNumberTask,
+
+			publishedAt: isPublished ? new Date().toISOString() : undefined,
 		},
 	});
+
+	if (isPublished && project.teamId) {
+		const tasks = await prisma.task.findMany({
+			where: {
+				projectId: id,
+			},
+			include: {
+				attachments: true,
+			},
+		});
+		const mappedTasks: CreateOfferingAndInteractionProps["tasks"] = tasks.map(
+			(task) => {
+				return {
+					fee: task.fee,
+					note: task.note,
+					attachments: task.attachments.map((attachment) => attachment.url),
+				};
+			},
+		);
+
+		await createOfferingAndInteraction({
+			prisma: prisma,
+			body: {
+				deadline: project.deadline.toISOString(),
+				fee: project.fee,
+				projectId: project.id,
+				teamId: project.teamId,
+				confirmationDuration: project.confirmationDuration,
+			},
+			discordClient,
+			project: {
+				clientName: project.clientName,
+				name: project.name,
+				imageRatio: project.imageRatio,
+				confirmationDuration: project.confirmationDuration,
+				note: project.note || "",
+				autoNumberTask: project.autoNumberTask ?? true,
+			},
+			tasks: mappedTasks,
+		});
+	}
 
 	/**
 	 * For update task
