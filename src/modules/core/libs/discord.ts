@@ -125,9 +125,7 @@ async function isUserAdmin(discordUserId: string) {
  * Handle the "done" command
  */
 async function handleDoneCommand(interaction: ChatInputCommandInteraction) {
-	const adminDiscordId = await config.getAdminDiscordId();
-
-	if (adminDiscordId !== interaction.user.id) {
+	if (!isUserAdmin(interaction.user.id)) {
 		return interaction.reply("Hanya admin yang diperbolehkan");
 	}
 
