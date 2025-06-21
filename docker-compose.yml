@@ -28,6 +28,7 @@ services:
       - redis
     networks:
       - default
+      - seorangabi-network
     environment:
       - TZ=Asia/Jakarta
     restart: always
@@ -38,4 +39,6 @@ volumes:
 networks:
   default:
     driver: bridge
-    
+  seorangabi-network:
+    external: true
+
