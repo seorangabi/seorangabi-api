@@ -18,6 +18,9 @@ import type {
 	ProjectStatus,
 	Team,
 } from "../../../../prisma/generated/client/index.js";
+import { getImageProductionPerWeek } from "../../statistic/statistic.service.js";
+import { format, parseISO } from "date-fns";
+import { id as localeId } from "date-fns/locale";
 
 const discordClient = new Client({
 	intents: [GatewayIntentBits.Guilds],
@@ -119,6 +122,19 @@ async function isUserAdmin(discordUserId: string) {
 	return discordUserId === adminId;
 }
 
+/**
+ * Format date range for display
+ */
+function formatDateRange(start: string, end: string): string {
+	const startDate = parseISO(start);
+	const endDate = parseISO(end);
+	return `${format(startDate, "d", { locale: localeId })} - ${format(
+		endDate,
+		"d MMM yyyy",
+		{ locale: localeId },
+	)}`;
+}
+
 // --------------- Command Handlers ---------------
 
 /**
@@ -163,7 +179,7 @@ async function handleDoneCommand(interaction: ChatInputCommandInteraction) {
  * Handle the "projects" command
  */
 async function handleProjectsCommand(interaction: ChatInputCommandInteraction) {
-	await interaction.deferReply({ ephemeral: true });
+	// await interaction.deferReply({ ephemeral: true });
 
 	try {
 		const teamOption = interaction.options.getString("team");
@@ -245,6 +261,80 @@ async function handleProjectsCommand(interaction: ChatInputCommandInteraction) {
 	}
 }
 
+/**
+ * Handle the "image-production-per-week" command
+ */
+async function handleImageProductionPerWeekCommand(
+	interaction: ChatInputCommandInteraction,
+) {
+	// await interaction.deferReply({ ephemeral: true });
+
+	try {
+		// Get optional month and year parameters, default to current month and year
+		const now = new Date();
+		const monthIndex =
+			(interaction.options.getInteger("bulan") || now.getMonth() + 1) - 1; // Convert from 1-12 to 0-11
+		const year = interaction.options.getInteger("tahun") || now.getFullYear();
+
+		// Get production data
+		const productionData = await getImageProductionPerWeek({
+			monthIndex,
+			year,
+		});
+
+		if (productionData.length === 0) {
+			return interaction.editReply(
+				"Tidak ada data produksi untuk periode tersebut.",
+			);
+		}
+
+		// Format the data for Discord display
+		const monthName = format(new Date(year, monthIndex), "MMMM yyyy", {
+			locale: localeId,
+		});
+
+		let responseContent = `# Statistik Produksi Bulan ${monthName}\n\n`;
+
+		// Add data for each week
+		productionData.forEach((weekData, index) => {
+			const weekNumber = index + 1;
+			const dateRange = formatDateRange(weekData.start, weekData.end);
+
+			responseContent += `## Minggu ${weekNumber} (${dateRange})\n`;
+
+			// Sort teams by count, highest first
+			const sortedTeams = [...weekData.teams].sort((a, b) => b.count - a.count);
+
+			// Add team production data
+			for (const team of sortedTeams) {
+				if (team.count > 0) {
+					responseContent += `${team.name}: **${team.count}** gambar\n`;
+				}
+			}
+
+			// Add week total
+			const weekTotal = sortedTeams.reduce((sum, team) => sum + team.count, 0);
+			responseContent += `\nTotal minggu: **${weekTotal}** gambar\n\n`;
+		});
+
+		// Add monthly total
+		const monthlyTotal = productionData.reduce(
+			(sum, week) =>
+				sum + week.teams.reduce((weekSum, team) => weekSum + team.count, 0),
+			0,
+		);
+
+		responseContent += `# Total Bulan ${monthName}: **${monthlyTotal}** gambar`;
+
+		return interaction.editReply(responseContent);
+	} catch (error) {
+		console.error("Error in image-production-per-week command:", error);
+		return interaction.editReply(
+			"Terjadi kesalahan saat mengambil data produksi.",
+		);
+	}
+}
+
 // --------------- Main Bot Logic ---------------
 
 const start = () => {
@@ -275,6 +365,10 @@ const start = () => {
 
 				case "projects":
 					await handleProjectsCommand(interaction);
+					break;
+
+				case "image-production-per-week":
+					await handleImageProductionPerWeekCommand(interaction);
 					break;
 			}
 		}
@@ -316,6 +410,28 @@ const Commands = [
 			},
 		],
 	},
+	{
+		name: "image-production-per-week",
+		description: "Melihat statistik produksi gambar per minggu",
+		options: [
+			{
+				name: "bulan",
+				description: "Bulan (1-12)",
+				type: 4, // INTEGER type
+				required: false,
+				min_value: 1,
+				max_value: 12,
+			},
+			{
+				name: "tahun",
+				description: "Tahun",
+				type: 4, // INTEGER type
+				required: false,
+				min_value: 2020,
+				max_value: 2030,
+			},
+		],
+	},
 ];
 
 /**
@@ -343,10 +459,9 @@ Route.get("/register", async (ctx) => {
 		const err = await registerResponse.json();
 		return ctx.json(err, 500);
 	}
-	{
-		const data = await registerResponse.json();
-		return Response.json({ message: "Commands registered" });
-	}
+
+	const data = await registerResponse.json();
+	return Response.json({ message: "Commands registered" });
 });
 
 export { Route, start, discordClient };
