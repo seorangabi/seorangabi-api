@@ -9,6 +9,7 @@ import offeringRoute from "./modules/offering/offering.router.js";
 import authRoute from "./modules/auth/auth.router.js";
 import taskRouter from "./modules/task/task.router.js";
 import uploadRouter from "./modules/upload/upload.router.js";
+import projectAttachmentRouter from "./modules/project-attachment/project-attachment.router.js";
 
 const api = new Hono();
 
@@ -36,5 +37,6 @@ api.route("/", statisticRoute);
 api.route("/", offeringRoute);
 api.route("/", taskRouter);
 api.route("/", uploadRouter);
+api.route("/", projectAttachmentRouter);
 
 export default api;

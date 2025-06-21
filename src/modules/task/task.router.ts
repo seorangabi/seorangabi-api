@@ -3,10 +3,7 @@ import { isUndefined } from "../core/libs/utils.js";
 import { z } from "zod";
 import { useJWT } from "../core/libs/jwt.js";
 import { zValidator } from "@hono/zod-validator";
-import {
-	OfferingStatus,
-	type Prisma,
-} from "../../../prisma/generated/client/index.js";
+import type { Prisma } from "../../../prisma/generated/client/index.js";
 import prisma from "../core/libs/prisma.js";
 import {
 	getOfferingTeamThreadFromProjectId,
