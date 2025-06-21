@@ -31,6 +31,7 @@ export const createProject = async ({
 
 	const createTasksInput: Prisma.TaskCreateManyInput[] = [];
 	const createTaskAttachmentsInput: Prisma.TaskAttachmentCreateManyInput[] = [];
+
 	let totalFee = 0;
 	let totalImageCount = 0;
 
@@ -76,6 +77,23 @@ export const createProject = async ({
 		},
 	});
 
+	// Create project attachments
+	const createProjectAttachmentsInput: Prisma.ProjectAttachmentCreateManyInput[] =
+		[];
+	for (const attachmentUrl of form.attachments) {
+		createProjectAttachmentsInput.push({
+			projectId,
+			url: attachmentUrl,
+		});
+	}
+
+	// Save project attachments
+	if (createProjectAttachmentsInput.length > 0) {
+		await prisma.projectAttachment.createMany({
+			data: createProjectAttachmentsInput,
+		});
+	}
+
 	await prisma.task.createMany({
 		data: createTasksInput,
 	});
@@ -85,6 +103,9 @@ export const createProject = async ({
 	});
 
 	if (form.isPublished) {
+		// Fetch project attachments
+		const projectAttachments = form.attachments || [];
+
 		await createOfferingAndInteraction({
 			prisma: prisma,
 			body: {
@@ -102,6 +123,7 @@ export const createProject = async ({
 				confirmationDuration: form.confirmationDuration,
 				note: form.note || "",
 				autoNumberTask: form.autoNumberTask ?? true,
+				attachments: projectAttachments,
 			},
 			tasks: form.tasks,
 		});
@@ -237,6 +259,17 @@ export const updateProject = async ({
 				attachments: true,
 			},
 		});
+
+		// Fetch project attachments
+		const projectAttachments = await prisma.projectAttachment.findMany({
+			where: {
+				projectId: id,
+			},
+			select: {
+				url: true,
+			},
+		});
+
 		const mappedTasks: CreateOfferingAndInteractionProps["tasks"] = tasks.map(
 			(task) => {
 				return {
@@ -264,6 +297,7 @@ export const updateProject = async ({
 				confirmationDuration: project.confirmationDuration,
 				note: project.note || "",
 				autoNumberTask: project.autoNumberTask ?? true,
+				attachments: projectAttachments.map((attachment) => attachment.url), // Add attachments
 			},
 			tasks: mappedTasks,
 		});

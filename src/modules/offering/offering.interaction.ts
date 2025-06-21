@@ -145,6 +145,9 @@ export const chooseTeamInteraction = async ({
 		where: {
 			id: projectId,
 		},
+		include: {
+			attachments: true,
+		},
 	});
 	const tasks = await prisma.task.findMany({
 		where: {
@@ -185,6 +188,7 @@ export const chooseTeamInteraction = async ({
 				confirmationDuration: project.confirmationDuration,
 				note: project.note || "",
 				autoNumberTask: project.autoNumberTask,
+				attachments: project.attachments.map((attachment) => attachment.url),
 			},
 			tasks: tasks.map((task) => ({
 				...task,

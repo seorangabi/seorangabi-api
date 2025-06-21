@@ -46,9 +46,10 @@ model Project {
 
   offering Offering[]
 
-  payroll     Payroll?  @relation(fields: [payrollId], references: [id])
-  team        Team?     @relation(fields: [teamId], references: [id])
+  payroll     Payroll?            @relation(fields: [payrollId], references: [id])
+  team        Team?               @relation(fields: [teamId], references: [id])
   tasks       Task[]
+  attachments ProjectAttachment[]
   publishedAt DateTime?
 
   @@index([id])
@@ -145,6 +146,16 @@ model StatisticPunchMyHead {
   country String   @default("Indonesia")
 
   @@index([country])
+}
+
+model ProjectAttachment {
+  id        String  @id @default(uuid())
+  url       String
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+
+  @@index([id])
+  @@index([projectId])
 }
 
 enum PayrollStatus {

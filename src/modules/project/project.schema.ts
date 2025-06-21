@@ -34,8 +34,8 @@ export const postProjectJsonSchema = z.object({
 	confirmationDuration: z.number(),
 	note: z.string().nullable(),
 	autoNumberTask: z.boolean().optional(),
-
 	isPublished: z.boolean().optional().default(true),
+	attachments: z.array(z.string()).default([]),
 });
 
 export const patchProjectJsonSchema = z.object({

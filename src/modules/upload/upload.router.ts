@@ -13,7 +13,10 @@ uploadRouter.post(
 	useJWT(),
 	zValidator(
 		"form",
-		z.object({ file: z.instanceof(File), forFeature: z.enum(["task"]) }),
+		z.object({
+			file: z.instanceof(File),
+			forFeature: z.enum(["task", "project"]),
+		}),
 	),
 	async (c) => {
 		const form = c.req.valid("form");
@@ -27,12 +30,7 @@ uploadRouter.post(
 		const extension = file.name.split(".").pop();
 
 		const generateName = () => {
-			switch (form.forFeature) {
-				case "task":
-					return `task_${Date.now()}.${extension}`;
-				default:
-					return `file_${Date.now()}.${extension}`;
-			}
+			return `${form.forFeature}_${Date.now()}.${extension}`;
 		};
 
 		const filePath = path.join("uploads", generateName());

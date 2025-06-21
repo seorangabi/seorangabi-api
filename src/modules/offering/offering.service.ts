@@ -98,6 +98,7 @@ export type CreateOfferingAndInteractionProps = {
 		clientName: string;
 		confirmationDuration: number;
 		autoNumberTask: boolean;
+		attachments: string[];
 	};
 	tasks: {
 		fee: number;
@@ -207,6 +208,25 @@ CLIENT : ${project.clientName || "N/A"}
 	if (project.note) {
 		await thread.send({
 			content: project.note,
+		});
+	}
+
+	// Send project attachments if they exist
+	if (project.attachments && project.attachments.length > 0) {
+		const projectAttachments: AttachmentBuilder[] = [];
+
+		for (const attachment of project.attachments) {
+			const name = attachment.split("/").pop() || "attachment";
+			projectAttachments.push(
+				new AttachmentBuilder(attachment, {
+					name,
+				}),
+			);
+		}
+
+		await thread.send({
+			content: "Project Attachments:",
+			files: projectAttachments,
 		});
 	}
 
