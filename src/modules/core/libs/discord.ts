@@ -1,6 +1,7 @@
 import {
 	ChatInputCommandInteraction,
 	Client,
+	Events,
 	GatewayIntentBits,
 	StringSelectMenuInteraction,
 } from "discord.js";
@@ -15,6 +16,10 @@ import { imageProductionPerWeekCommandHandler } from "./discord/handlers/image-p
 import { doneCommandHandler } from "./discord/handlers/done.js";
 import { projectsCommandHandler } from "./discord/handlers/projects.js";
 import { askAIHandler } from "./discord/handlers/ask-ai.js";
+import {
+	handleCancelQueryButton,
+	handleExecuteQueryButton,
+} from "./discord/handlers/button-handlers.js";
 
 const discordClient = new Client({
 	intents: [GatewayIntentBits.Guilds],
@@ -60,6 +65,16 @@ const start = () => {
 					await askAIHandler(interaction);
 					break;
 			}
+			return;
+		}
+
+		if (interaction.isButton()) {
+			if (interaction.customId === "execute_query") {
+				await handleExecuteQueryButton(interaction);
+			} else if (interaction.customId === "cancel_query") {
+				await handleCancelQueryButton(interaction);
+			}
+			return;
 		}
 	});
 

@@ -1,5 +1,10 @@
 import type { ChatInputCommandInteraction } from "discord.js";
-import { EmbedBuilder } from "discord.js";
+import {
+	EmbedBuilder,
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
+} from "discord.js";
 
 const askAIHandler = async (interaction: ChatInputCommandInteraction) => {
 	// Defer reply to give us time to call the AI API
@@ -10,7 +15,7 @@ const askAIHandler = async (interaction: ChatInputCommandInteraction) => {
 		const question = interaction.options.getString("question");
 
 		if (!question) {
-			return interaction.editReply("Please provide a question to ask the AI.");
+			return interaction.reply("Please provide a question to ask the AI.");
 		}
 
 		// Check if we have the required environment variables
@@ -21,18 +26,18 @@ const askAIHandler = async (interaction: ChatInputCommandInteraction) => {
 			console.error(
 				"Missing AGENT_URL or AGENT_API_KEY in environment variables",
 			);
-			return interaction.editReply("AI service is not properly configured.");
+			return interaction.reply("AI service is not properly configured.");
 		}
 
 		// Send the question to the AI agent
-		const response = await fetch(`${agentUrl}/ask`, {
+		const response = await fetch(`${agentUrl}/query`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 				Authorization: `Bearer ${agentApiKey}`,
 			},
 			body: JSON.stringify({
-				message: question,
+				query: question,
 			}),
 		});
 
@@ -50,18 +55,40 @@ const askAIHandler = async (interaction: ChatInputCommandInteraction) => {
 		// Create a rich embed for the response
 		const embed = new EmbedBuilder()
 			.setColor("#0099ff")
-			.setTitle("AI Response")
-			.setDescription(data.message)
+			.setTitle("Review Generated SQL Query")
+			.setFields([
+				{ name: "Question", value: question },
+				{
+					name: "Generated Query",
+					value: data.query || "No query generated",
+				},
+			])
+			.setFooter({ text: "Review the query before execution" })
 			.setTimestamp();
 
-		// Send the response back to Discord
-		await interaction.editReply({ embeds: [embed] });
+		// Create confirmation button
+		const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+			new ButtonBuilder()
+				.setCustomId("execute_query")
+				.setLabel("Execute Query")
+				.setStyle(ButtonStyle.Primary),
+			new ButtonBuilder()
+				.setCustomId("cancel_query")
+				.setLabel("Cancel")
+				.setStyle(ButtonStyle.Secondary),
+		);
+
+		// Send the response with buttons
+		interaction.editReply({
+			embeds: [embed],
+			components: [row],
+		});
 	} catch (error) {
 		console.error("Error in askAIHandler:", error);
 
 		// Handle errors gracefully
 		if (interaction.deferred || interaction.replied) {
-			await interaction.editReply("Sorry, I encountered an error");
+			await interaction.reply("Sorry, I encountered an error");
 		} else {
 			console.error("Failed to edit reply:", error);
 			await interaction.reply({
