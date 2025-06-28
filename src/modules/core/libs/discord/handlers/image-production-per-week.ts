@@ -11,7 +11,7 @@ import { formatDateRange } from "../helpers.js";
 async function imageProductionPerWeekCommandHandler(
 	interaction: ChatInputCommandInteraction,
 ) {
-	// await interaction.deferReply({ ephemeral: true });
+	await interaction.deferReply();
 
 	try {
 		// Get optional month and year parameters, default to current month and year

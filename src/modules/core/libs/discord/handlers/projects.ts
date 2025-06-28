@@ -13,7 +13,7 @@ import type { Team } from "../../../../../../prisma/generated/client/index.js";
 async function projectsCommandHandler(
 	interaction: ChatInputCommandInteraction,
 ) {
-	// await interaction.deferReply({ ephemeral: true });
+	await interaction.deferReply();
 
 	try {
 		const teamOption = interaction.options.getString("team");

@@ -7,6 +7,14 @@ import {
 } from "discord.js";
 
 const askAIHandler = async (interaction: ChatInputCommandInteraction) => {
+	// allowed only for discord id (540163649709277245 & 798396651684888576)
+	// if (
+	// 	!interaction.user.id ||
+	// 	!["540163649709277245", "798396651684888576"].includes(interaction.user.id)
+	// ) {
+	// 	return interaction.editReply("You are not allowed to use this command.");
+	// }
+
 	// Defer reply to give us time to call the AI API
 	await interaction.deferReply();
 
